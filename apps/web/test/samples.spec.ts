@@ -26,7 +26,7 @@ test("the truck line art", async ({ page }) => {
   await page.locator('input[type="file"]').first().setInputFiles(file);
   await expect(page.getByRole("img", { name: "The traced artwork" })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("button", { name: "Line Art" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByLabel("Width").fill("100");
+  await page.getByLabel("Output Width").fill("100");
   await page.waitForTimeout(1500);
   await expect(page.getByText("Updating…")).toHaveCount(0, { timeout: 30_000 });
   await page.screenshot({ path: join(shots, "truck-traced.png") });
@@ -69,6 +69,7 @@ test("a logo cropped out of a poster", async ({ page }) => {
   await page.screenshot({ path: join(shots, "poster-vector.png") });
   await page.getByRole("button", { name: "Make Files" }).click();
   await expect(page.getByRole("button", { name: /Download All/ })).toBeVisible({ timeout: 230_000 });
+  await expect(page.getByText("Do Not Use These Files Yet")).toHaveCount(0);
   await page.screenshot({ path: join(shots, "poster-files.png") });
   await saveAll(page, join(root, "web-poster"));
   await page.getByRole("tab", { name: "3D Plate" }).click();

@@ -117,4 +117,16 @@ describe("random maps", () => {
     expect(parts).toBeGreaterThan(60);
     expect(bad).toEqual([]);
   }, 280_000);
+
+  // At 5 mm the 32-bit vertices are fine enough to hide this. At 100 mm they round thin triangles over.
+  it("stay unfolded at a printable size", () => {
+    const folded: string[] = [];
+    for (let t = 0; t < 8; t++) {
+      const map = { ...randomMap(41, t), cellMm: 0.25 };
+      const built = buildParts(wasm, map, boundaryChains(map), { style: styles[t % 4], baseMm: 1.2, insetMm: 2 });
+      for (const p of verifyThreeMf(writeThreeMf(built)).parts)
+        if (p.folded) folded.push(`${t}: ${p.name} ${p.folded}`);
+    }
+    expect(folded).toEqual([]);
+  }, 120_000);
 });

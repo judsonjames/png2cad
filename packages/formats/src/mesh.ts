@@ -7,6 +7,13 @@ import type { CrossSection, Manifold, ManifoldToplevel } from "manifold-3d";
 
 export type PlateStyle = "inset" | "relief" | "flat";
 
+/**
+ * Meshes leave the kernel as 32-bit floats, spaced 0.000008 mm apart at 100 mm. A triangle thinner than that can flip
+ * over when rounded, which leaves a fold in a closed part. Well under the trace grid, and above the spacing at any size
+ * a printer can make.
+ */
+const SLIVER_MM = 1e-4;
+
 export interface PlateOptions {
   style?: PlateStyle;
   baseMm?: number;
@@ -154,7 +161,8 @@ export function buildParts(wasm: ManifoldToplevel, map: LabelMap, chains: Chain[
     const prism = (s: CrossSection, z0: number, z1: number): Manifold =>
       scope(scope(s.extrude(z1 - z0)).translate([0, 0, z0]));
     const parts: Part[] = [];
-    const add = (name: string, color: [number, number, number], solid: Manifold) => {
+    const add = (name: string, color: [number, number, number], raw: Manifold) => {
+      const solid = scope(raw.simplify(SLIVER_MM));
       // Never a silent gap in the plate: a part that comes out empty stops the job.
       if (solid.isEmpty()) throw new Error(`The ${name} part of the plate came out empty (${solid.status()}).`);
       const mesh = solid.getMesh();

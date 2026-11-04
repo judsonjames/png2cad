@@ -115,8 +115,8 @@ function widen(lab: Uint8Array, w: number, h: number, v: number, thinMask: Mask,
       }
     }
     const near = distanceSquared(spot, ww, wh);
-    // Thin only the band around the spot: the centerline there is all that matters, and it bounds the work.
-    for (let i = 0; i < sub.length; i++) if (near[i] > 4 * reach2) sub[i] = 0;
+    // The whole window, not just a band round the spot: cutting the shape first grows false branches on the
+    // centerline, and widening those leaves spikes where lines meet.
     const skeleton = thin(sub, ww, wh);
     let any = false;
     for (let i = 0; i < skeleton.length; i++) {
@@ -159,7 +159,6 @@ function classify(lab: Uint8Array, w: number, h: number, v: number, mask: Mask, 
       }
     }
     const away = distanceSquared(here, ww, wh);
-    for (let i = 0; i < sub.length; i++) if (away[i] > (2 * widthCells) ** 2) sub[i] = 0;
     const skeleton = thin(sub, ww, wh);
     let length = 0;
     let around = 0;
@@ -394,7 +393,7 @@ export function fitToNozzle(
     ...options,
   };
   // Coarser than two cells breaks thin lines into dashes that then get filled as gaps.
-  const src = o.nozzleMm / (2 * source.cellMm) >= 12 ? every2(source) : source;
+  const src = o.nozzleMm / (2 * source.cellMm) >= 11 ? every2(source) : source;
   const curW = src.width * src.cellMm;
   const curH = src.height * src.cellMm;
   const fits: number[] = [];

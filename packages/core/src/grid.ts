@@ -179,48 +179,74 @@ export function reassign(lab: Uint8Array, w: number, h: number, region: Mask): U
   return out;
 }
 
-/** Zhang-Suen thinning of a mask, in place. */
-export function thin(mask: Mask, w: number, h: number): Mask {
-  const m = mask;
+/**
+ * Zhang-Suen thinning, in place. Worked on a copy with a clear border, so shapes reaching the edge of the window thin
+ * like any other instead of keeping a frame that grows false branches.
+ */
+export function thin(mask: Mask, width: number, height: number): Mask {
+  const w = width + 2;
+  const h = height + 2;
+  const m = padGrid(mask, width, height, 1);
+  // A cell with no clear neighbor can never be removed, so only the edge of the shape is examined. The result is the
+  // same as scanning every cell on every pass, at far less cost on solid areas.
+  const ring = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+  const listed = new Uint8Array(w * h);
+  let edge: number[] = [];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const c = y * w + x;
+      if (m[c] && ring.some((d) => !m[c + d])) {
+        edge.push(c);
+        listed[c] = 1;
+      }
+    }
+  }
   let changed = true;
   const list: number[] = [];
   while (changed) {
     changed = false;
     for (let pass = 0; pass < 2; pass++) {
       list.length = 0;
-      for (let y = 1; y < h - 1; y++) {
-        for (let x = 1; x < w - 1; x++) {
-          const c = y * w + x;
-          if (!m[c]) continue;
-          const p2 = m[c - w];
-          const p3 = m[c - w + 1];
-          const p4 = m[c + 1];
-          const p5 = m[c + w + 1];
-          const p6 = m[c + w];
-          const p7 = m[c + w - 1];
-          const p8 = m[c - 1];
-          const p9 = m[c - w - 1];
-          const b = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-          if (b < 2 || b > 6) continue;
-          const a =
-            (!p2 && p3 ? 1 : 0) +
-            (!p3 && p4 ? 1 : 0) +
-            (!p4 && p5 ? 1 : 0) +
-            (!p5 && p6 ? 1 : 0) +
-            (!p6 && p7 ? 1 : 0) +
-            (!p7 && p8 ? 1 : 0) +
-            (!p8 && p9 ? 1 : 0) +
-            (!p9 && p2 ? 1 : 0);
-          if (a !== 1) continue;
-          if (pass === 0 ? p2 * p4 * p6 || p4 * p6 * p8 : p2 * p4 * p8 || p2 * p6 * p8) continue;
-          list.push(c);
-        }
+      for (const c of edge) {
+        if (!m[c]) continue;
+        const p2 = m[c - w];
+        const p3 = m[c - w + 1];
+        const p4 = m[c + 1];
+        const p5 = m[c + w + 1];
+        const p6 = m[c + w];
+        const p7 = m[c + w - 1];
+        const p8 = m[c - 1];
+        const p9 = m[c - w - 1];
+        const b = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (b < 2 || b > 6) continue;
+        const a =
+          (!p2 && p3 ? 1 : 0) +
+          (!p3 && p4 ? 1 : 0) +
+          (!p4 && p5 ? 1 : 0) +
+          (!p5 && p6 ? 1 : 0) +
+          (!p6 && p7 ? 1 : 0) +
+          (!p7 && p8 ? 1 : 0) +
+          (!p8 && p9 ? 1 : 0) +
+          (!p9 && p2 ? 1 : 0);
+        if (a !== 1) continue;
+        if (pass === 0 ? p2 * p4 * p6 || p4 * p6 * p8 : p2 * p4 * p8 || p2 * p6 * p8) continue;
+        list.push(c);
       }
       if (list.length) changed = true;
       for (const c of list) m[c] = 0;
+      for (const c of list) {
+        for (const d of ring) {
+          if (m[c + d] && !listed[c + d]) {
+            listed[c + d] = 1;
+            edge.push(c + d);
+          }
+        }
+      }
     }
+    edge = edge.filter((c) => m[c]);
   }
-  return m;
+  for (let y = 0; y < height; y++) mask.set(m.subarray((y + 1) * w + 1, (y + 1) * w + 1 + width), y * width);
+  return mask;
 }
 
 /** Separable Gaussian blur of a float image, truncated at four sigma, edges held at their nearest value. */

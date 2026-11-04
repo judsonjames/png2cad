@@ -10,10 +10,10 @@ export function SizePanel() {
   const follow =
     other === undefined ? "" : s.unit === "in" ? `${(other / 25.4).toFixed(2)} in` : `${other.toFixed(1)} mm`;
   return (
-    <Section title="Size">
+    <Section title="Output Size" help="How big your finished files will be, whatever the size of the image.">
       <div className="app-size">
         <ToggleGroup
-          label="Set the Size By"
+          label="Set the Output Size By"
           value={s.sizeBy}
           onChange={(sizeBy) => update({ sizeBy })}
           options={[
@@ -22,9 +22,9 @@ export function SizePanel() {
           ]}
         />
         <Field
-          label={s.sizeBy === "width" ? "Width" : "Height"}
+          label={s.sizeBy === "width" ? "Output Width" : "Output Height"}
           hint={follow && `${s.sizeBy === "width" ? "Height" : "Width"} follows at ${follow}`}
-          error={s.size > 0 ? undefined : "Enter a size above 0."}
+          error={s.size > 0 ? undefined : "Enter an output size above 0."}
         >
           <NumberInput unit={s.unit} value={s.size} min={0} onChange={(size) => update({ size: size ?? 0 })} />
         </Field>

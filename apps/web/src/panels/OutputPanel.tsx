@@ -77,7 +77,7 @@ export function OutputPanel() {
         {s.makeDxf && (
           <div className="app-suboptions">
             <p className="p2c-help">
-              {`Written in ${s.unit === "mm" ? "millimeters" : "inches"}, matching the size above. Choose the same units when you insert it.`}
+              {`Written in ${s.unit === "mm" ? "millimeters" : "inches"}, matching the output size. Choose the same units when you insert it.`}
             </p>
             <Checkbox
               label="Also Write One File per Color"
@@ -126,7 +126,7 @@ export function OutputPanel() {
             )}
             {s.mode === "mask" && s.style !== "flat" && (
               <p className="p2c-help">
-                The size above is the art. Line art sits on a plate with a 2 mm border, so the plate is 4 mm larger.
+                The output size is the art. Line art sits on a plate with a 2 mm border, so the plate is 4 mm larger.
               </p>
             )}
             {s.style !== "flat" && (

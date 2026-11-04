@@ -235,6 +235,43 @@ describe("nozzle fit", () => {
   });
 });
 
+describe("widening lines that meet", () => {
+  /** Thin lines of uneven width crossing, as in traced line art: only parts of each are under the minimum. */
+  const grid = labelMap(900, 600, (x, y) => {
+    const wide = 5 + 2.5 * Math.sin(x / 37) + 1.5 * Math.sin(x / 11);
+    const tall = 5 + 2.5 * Math.sin(y / 29) + 1.5 * Math.sin(y / 13);
+    const across = [150, 300, 450].some((c) => Math.abs(y - c - 6 * Math.sin(x / 90)) < wide);
+    const down = [180, 450, 720].some((c) => Math.abs(x - c - 6 * Math.sin(y / 80)) < tall);
+    return (across || down) && x > 40 && x < 860 && y > 40 && y < 560 ? 1 : 0;
+  });
+
+  it("gives even lines: no blobs where they meet, no nubs along them", () => {
+    const { map } = fitToNozzle(grid, { nozzleMm: 0.4 });
+    const w = map.width;
+    const h = map.height;
+    const lineCells = 0.42 / map.cellMm;
+    const art = Uint8Array.from(map.data, (v) => (v ? 1 : 0));
+    const inside = distanceSquared(
+      Uint8Array.from(art, (v) => 1 - v),
+      w,
+      h,
+    );
+    let widest = 0;
+    for (const d of inside) widest = Math.max(widest, Math.sqrt(d));
+    // A crossing of two lines of width L holds a circle of radius about 0.71 L.
+    expect(widest / lineCells).toBeLessThan(1); // 1.59 when false branches were widened
+    // Between crossings, a line's width stays even.
+    const y0 = Math.round(h * 0.25);
+    const widths: number[] = [];
+    for (let x = Math.round(w * 0.32); x < w * 0.45; x++) {
+      let run = 0;
+      for (let y = y0 - 40; y < y0 + 40; y++) if (art[y * w + x]) run++;
+      widths.push(run);
+    }
+    expect(Math.max(...widths) / Math.min(...widths)).toBeLessThan(1.5);
+  });
+});
+
 describe("low-resolution line art", () => {
   /** Hard-edged curved strokes at about the resolution of a logo saved for the web. */
   function strokes() {

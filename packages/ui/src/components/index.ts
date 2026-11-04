@@ -3,7 +3,6 @@
 import "./components.css";
 
 export { AppHeader, BrandName } from "./AppHeader";
-export { DropPanel } from "./DropPanel";
 export { Badge, type Tone } from "./Badge";
 export { Banner, type BannerKind } from "./Banner";
 export { Button, ButtonLink, type ButtonLinkProps, type ButtonProps, type ButtonVariant } from "./Button";
@@ -30,5 +29,4 @@ export { TabPanel, Tabs, type TabItem } from "./Tabs";
 export { InfoTip, Tip } from "./Tooltip";
 export { CheckList, CheckRow, Verdict, type CheckItem, type CheckState } from "./Verdict";
 export { Fit, Pane, Workspace } from "./Workspace";
-export { SchemePicker, SchemePreview } from "./SchemePicker";
 export { LogoMark } from "./LogoMark";

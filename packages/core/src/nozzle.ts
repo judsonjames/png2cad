@@ -401,7 +401,7 @@ export function fitToNozzle(
   if (box.widthMm) fits.push(box.widthMm / curW);
   if (box.heightMm) fits.push(box.heightMm / curH);
   let scale = fits.length ? Math.min(...fits) : 1;
-  let result = fitOnce(src, o);
+  let result!: ReturnType<typeof fitOnce>;
   for (let t = 0; t < 5; t++) {
     const work =
       Math.abs(scale - 1) < 1e-6

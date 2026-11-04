@@ -26,13 +26,16 @@ test("the truck line art", async ({ page }) => {
   await page.locator('input[type="file"]').first().setInputFiles(file);
   await expect(page.getByRole("img", { name: "The traced artwork" })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("button", { name: "Line Art" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByLabel("Width").fill("127");
+  await page.getByLabel("Width").fill("100");
   await page.waitForTimeout(1500);
   await expect(page.getByText("Updating…")).toHaveCount(0, { timeout: 30_000 });
   await page.screenshot({ path: join(shots, "truck-traced.png") });
   await page.getByRole("button", { name: "Make Files" }).click();
-  await expect(page.getByRole("button", { name: /Download All/ })).toBeVisible({ timeout: 200_000 });
+  await expect(page.getByRole("button", { name: /Download All/ })).toBeVisible({ timeout: 230_000 });
   await page.screenshot({ path: join(shots, "truck-files.png") });
+  // At 100 mm this art is close to what a 0.4 mm nozzle can do, which is why it is the size tested here.
+  await expect(page.getByText("Do Not Use These Files Yet")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Files" }).getByText(/^100\.0 x [\d.]+ mm, /)).toHaveCount(2);
   await saveAll(page, join(root, "web-truck"));
   await page.getByRole("tab", { name: "3D Plate" }).click();
   await expect(page.getByRole("img", { name: /3D view of the plate/ })).toBeVisible({ timeout: 30_000 });

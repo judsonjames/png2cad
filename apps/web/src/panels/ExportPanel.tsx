@@ -65,8 +65,10 @@ export function ExportPanel() {
           <ul className="app-files" aria-label="Files">
             {result.files.map((f) => (
               <li key={f.name}>
-                <span className="app-file-name">{f.name}</span>
-                <span className="app-file-size">{sizeOf(f.bytes.length)}</span>
+                <span className="app-file-text">
+                  <span className="app-file-name">{f.name}</span>
+                  <span className="app-file-size">{`${f.sizeText}, ${sizeOf(f.bytes.length)}`}</span>
+                </span>
                 <Button aria-label={`Download ${f.name}`} onClick={() => download(f.name, f.bytes)}>
                   Download
                 </Button>

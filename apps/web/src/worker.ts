@@ -60,7 +60,7 @@ function preview(image: ImageData2, t: TraceRequest, tolMm: number): PreviewResu
 
 async function runExport(image: ImageData2, r: ExportRequest): Promise<ExportResult> {
   progress("Tracing", 0.02);
-  const map = traceImage(image, traceOptions(r.trace, 8_000_000));
+  const map = traceImage(image, traceOptions(r.trace, 32_000_000));
   const wasm = r.plate ? await loadKernel() : null;
   const job: JobRequest = {
     title: r.title,

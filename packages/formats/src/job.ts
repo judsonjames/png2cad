@@ -14,9 +14,10 @@ import {
   type FitOptions,
   type FitReport,
   type LabelMap,
+  type Point,
 } from "@png2cad/core";
 import { writeDxf, type DxfUnits } from "./dxf.ts";
-import { buildParts, labelLoops, type Part, type PlateOptions } from "./mesh.ts";
+import { buildParts, labelLoops, partBounds, type Part, type PlateOptions } from "./mesh.ts";
 import { hexColor, writeSvg, type SvgColor, type SvgResult } from "./svg.ts";
 import { projectFromTemplate, writeThreeMf, type BambuTemplate } from "./threemf.ts";
 import { verifyDxf, verifySvg, verifyThreeMf, type Finding } from "./verify.ts";
@@ -28,6 +29,8 @@ export interface OutputFile {
   kind: "svg" | "dxf" | "3mf";
   bytes: Uint8Array;
   nozzleMm: number | null;
+  /** The size inside the file, in the file's own units, as a person would read it. */
+  sizeText: string;
 }
 
 export interface SvgRequest {
@@ -90,16 +93,41 @@ export function vectorize(
   return writeSvg(svgColors(map, svg?.tolMm), { title, backdrop: svg?.backdrop, ...box });
 }
 
-function shifted(curves: Curve[]): Curve[] {
+function extents(lists: Point[][]) {
   let loX = Infinity;
   let loY = Infinity;
-  for (const c of curves) {
-    for (const p of c.points) {
+  let hiX = -Infinity;
+  let hiY = -Infinity;
+  for (const points of lists) {
+    for (const p of points) {
       loX = Math.min(loX, p[0]);
       loY = Math.min(loY, p[1]);
+      hiX = Math.max(hiX, p[0]);
+      hiY = Math.max(hiY, p[1]);
     }
   }
+  return { loX, loY, width: hiX - loX, height: hiY - loY };
+}
+
+function shifted(curves: Curve[], loX: number, loY: number): Curve[] {
   return curves.map((c) => ({ closed: c.closed, points: c.points.map(([x, y]) => [x - loX, y - loY]) }));
+}
+
+function sizeText(width: number, height: number, unit: string): string {
+  const digits = unit === "in" ? 2 : 1;
+  return `${width.toFixed(digits)} x ${height.toFixed(digits)} ${unit}`;
+}
+
+/**
+ * The fit crops to the art and can trim it slightly, leaving it a fraction under the size asked for. Scale the result
+ * onto the requested size; the change is far smaller than the 5% margin on line widths.
+ */
+function exactSize(map: LabelMap, box: { widthMm?: number; heightMm?: number }): LabelMap {
+  const art = extents(boundaryChains(map).map((c) => c.points));
+  const fits: number[] = [];
+  if (box.widthMm) fits.push(box.widthMm / art.width);
+  if (box.heightMm) fits.push(box.heightMm / art.height);
+  return fits.length ? { ...map, cellMm: map.cellMm * Math.min(...fits) } : map;
 }
 
 function nozzleTag(n: number): string {
@@ -117,23 +145,33 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
     progress?.("Fitting curves", 0);
     svg = vectorize(map, r.title, box, r.svg);
     const bytes = enc.encode(svg.text);
-    files.push({ name: `${r.title}.svg`, kind: "svg", bytes, nozzleMm: null });
+    const size = sizeText(svg.widthMm, svg.heightMm, "mm");
+    files.push({ name: `${r.title}.svg`, kind: "svg", bytes, nozzleMm: null, sizeText: size });
     findings.push(...prefix("SVG", verifySvg(dec.decode(bytes), r.widthMm, r.heightMm)));
   }
   const needsFit = r.dxf || r.plate || r.svg?.source === "nozzle";
   if (needsFit) {
     r.nozzles.forEach((n, i) => {
       progress?.(`Fitting to the ${n} mm nozzle`, (i + 1) / stepCount);
-      const fitted = fitToNozzle(map, { nozzleMm: n, ...r.fit }, box);
+      const raw = fitToNozzle(map, { nozzleMm: n, ...r.fit }, box);
+      const fitted = { report: raw.report, map: exactSize(raw.map, box) };
       const result: NozzleResult = { report: fitted.report, map: fitted.map };
       const tag = nozzleTag(n);
       nozzleFindings(fitted.report, fitted.map, findings);
       const chains = boundaryChains(fitted.map);
       if (r.dxf) {
-        const curves = shifted(chainsToCurves(chains, 0.0127, fitted.map.cellMm));
+        const all = chainsToCurves(chains, 0.0127, fitted.map.cellMm);
+        const art = extents(all.map((c) => c.points));
+        const curves = shifted(all, art.loX, art.loY);
         const text = writeDxf(curves, r.dxf.units);
-        files.push({ name: `${r.title}_${tag}.dxf`, kind: "dxf", bytes: enc.encode(text), nozzleMm: n });
         const k = r.dxf.units === "in" ? 1 / MM_PER_INCH : 1;
+        files.push({
+          name: `${r.title}_${tag}.dxf`,
+          kind: "dxf",
+          bytes: enc.encode(text),
+          nozzleMm: n,
+          sizeText: sizeText(art.width * k, art.height * k, r.dxf.units),
+        });
         findings.push(
           ...prefix(`DXF ${n} mm`, verifyDxf(text, r.widthMm && r.widthMm * k, r.heightMm && r.heightMm * k)),
         );
@@ -142,8 +180,16 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
           for (const [label, list] of loops) {
             const own = list.map((points) => ({ points, closed: true }));
             const name = fitted.map.names[label];
-            const t = writeDxf(shifted(own), r.dxf.units, name.toUpperCase());
-            files.push({ name: `${r.title}_${tag}_${name}.dxf`, kind: "dxf", bytes: enc.encode(t), nozzleMm: n });
+            // The same origin as the main file, so the files line up when stacked.
+            const t = writeDxf(shifted(own, art.loX, art.loY), r.dxf.units, name.toUpperCase());
+            const own2 = extents(list);
+            files.push({
+              name: `${r.title}_${tag}_${name}.dxf`,
+              kind: "dxf",
+              bytes: enc.encode(t),
+              nozzleMm: n,
+              sizeText: sizeText(own2.width * k, own2.height * k, r.dxf.units),
+            });
           }
         }
       }
@@ -152,8 +198,14 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
           title: `${r.title}_${tag}`,
           backdrop: r.svg.backdrop,
         });
-        files.push({ name: `${r.title}_${tag}.svg`, kind: "svg", bytes: enc.encode(s.text), nozzleMm: n });
-        findings.push(...prefix(`SVG ${n} mm`, verifySvg(s.text)));
+        files.push({
+          name: `${r.title}_${tag}.svg`,
+          kind: "svg",
+          bytes: enc.encode(s.text),
+          nozzleMm: n,
+          sizeText: sizeText(s.widthMm, s.heightMm, "mm"),
+        });
+        findings.push(...prefix(`SVG ${n} mm`, verifySvg(s.text, r.widthMm, r.heightMm)));
         svg ??= s;
       }
       if (r.plate) {
@@ -186,7 +238,9 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
             )
           : undefined;
         const bytes = writeThreeMf(parts, { title: `${r.title}_${tag}`, project });
-        files.push({ name: `${r.title}_${tag}.3mf`, kind: "3mf", bytes, nozzleMm: n });
+        const { lo, hi } = partBounds(parts);
+        const plate = `${sizeText(hi[0] - lo[0], hi[1] - lo[1], "mm").replace(" mm", "")} x ${(hi[2] - lo[2]).toFixed(1)} mm`;
+        files.push({ name: `${r.title}_${tag}.3mf`, kind: "3mf", bytes, nozzleMm: n, sizeText: plate });
         findings.push(...prefix(`3MF ${n} mm`, verifyThreeMf(bytes, r.plate.materials).findings));
         if (r.plate.template) {
           const bed = String(r.plate.template.printer);

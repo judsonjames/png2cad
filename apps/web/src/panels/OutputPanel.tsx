@@ -7,7 +7,6 @@ import {
   Field,
   NumberInput,
   Section,
-  Select,
   Switch,
   ToggleGroup,
 } from "@png2cad/ui/components";
@@ -77,16 +76,9 @@ export function OutputPanel() {
         />
         {s.makeDxf && (
           <div className="app-suboptions">
-            <Field label="DXF Units">
-              <Select
-                value={s.dxfUnits}
-                onChange={(dxfUnits) => update({ dxfUnits })}
-                options={[
-                  { value: "in", label: "Inches" },
-                  { value: "mm", label: "Millimeters" },
-                ]}
-              />
-            </Field>
+            <p className="p2c-help">
+              {`Written in ${s.unit === "mm" ? "millimeters" : "inches"}, matching the size above. Choose the same units when you insert it.`}
+            </p>
             <Checkbox
               label="Also Write One File per Color"
               hint="For one sketch per color."
@@ -131,6 +123,11 @@ export function OutputPanel() {
               <Field label="Raised Height">
                 <NumberInput unit="mm" min={0.1} value={s.reliefMm} onChange={(v) => v && update({ reliefMm: v })} />
               </Field>
+            )}
+            {s.mode === "mask" && s.style !== "flat" && (
+              <p className="p2c-help">
+                The size above is the art. Line art sits on a plate with a 2 mm border, so the plate is 4 mm larger.
+              </p>
             )}
             {s.style !== "flat" && (
               <Field label="Base Thickness" info="The solid plate under the design, rounded to whole layers.">

@@ -16,6 +16,27 @@ export interface Finding {
 const pass = (code: string, message: string): Finding => ({ severity: "pass", code, message });
 const fault = (code: string, message: string): Finding => ({ severity: "fault", code, message });
 
+/** The art must fill the requested box on at least one side and pass it on neither. */
+function sizeFinding(
+  code: string,
+  name: string,
+  width: number,
+  height: number,
+  unit: string,
+  maxWidth?: number,
+  maxHeight?: number,
+): Finding {
+  const shown = `${Number(width.toFixed(3))} x ${Number(height.toFixed(3))}${unit}`;
+  if ((maxWidth && width > maxWidth * 1.002) || (maxHeight && height > maxHeight * 1.002)) {
+    return fault(`${code}.size`, `The ${name} is ${shown}, larger than the requested size.`);
+  }
+  const filled = (maxWidth && width >= maxWidth * 0.995) || (maxHeight && height >= maxHeight * 0.995);
+  if ((maxWidth || maxHeight) && !filled) {
+    return fault(`${code}.size`, `The ${name} is ${shown}, smaller than the requested size.`);
+  }
+  return pass(`${code}.size`, `Size is ${shown}`);
+}
+
 export function readDxf(text: string): Curve[] {
   const lines = text.split("\n").map((s) => s.trim());
   const curves: Curve[] = [];
@@ -79,9 +100,7 @@ export function verifyDxf(text: string, maxWidth?: number, maxHeight?: number): 
       loY = Math.min(loY, p[1]);
     }
   }
-  const over =
-    (maxWidth && hiX - loX > maxWidth * 1.002) || (maxHeight && hiY - loY > maxHeight * 1.002) ? true : false;
-  out.push(over ? fault("dxf.size", "The DXF is larger than the requested size.") : pass("dxf.size", "Fits the size"));
+  out.push(sizeFinding("dxf", "DXF", hiX - loX, hiY - loY, "", maxWidth, maxHeight));
   return out;
 }
 
@@ -150,10 +169,8 @@ export function verifySvg(text: string, maxWidth?: number, maxHeight?: number): 
   if (!size) out.push(fault("svg.size", "The SVG does not state its size in millimeters."));
   else if (Math.abs(Number(size[1]) - Number(size[3])) > 1e-3 || Math.abs(Number(size[2]) - Number(size[4])) > 1e-3) {
     out.push(fault("svg.viewbox", "The viewBox does not match the size."));
-  } else if ((maxWidth && Number(size[1]) > maxWidth * 1.002) || (maxHeight && Number(size[2]) > maxHeight * 1.002)) {
-    out.push(fault("svg.size", "The SVG is larger than the requested size."));
   } else {
-    out.push(pass("svg.size", `Real size, ${size[1]} x ${size[2]} mm`));
+    out.push(sizeFinding("svg", "SVG", Number(size[1]), Number(size[2]), " mm", maxWidth, maxHeight));
   }
   if (/<(image|text|style|use|defs)\b|\s(stroke|style|transform|class)=/.test(text)) {
     out.push(fault("svg.plain", "The SVG holds something other than filled paths."));

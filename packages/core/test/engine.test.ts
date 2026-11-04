@@ -235,6 +235,62 @@ describe("nozzle fit", () => {
   });
 });
 
+describe("low-resolution line art", () => {
+  /** Hard-edged curved strokes at about the resolution of a logo saved for the web. */
+  function strokes() {
+    const w = 900;
+    const h = 300;
+    const paths = [
+      (x: number) => 90 + 40 * Math.sin(x / 70),
+      (x: number) => 150 + 30 * Math.sin(x / 45 + 1),
+      (x: number) => 215 + 25 * Math.sin(x / 95 + 2),
+    ];
+    return image(w, h, (x, y) => {
+      if (x < 30 || x >= w - 30) return [0, 191, 99];
+      let cover = 0;
+      for (let sy = 0; sy < 4; sy++) {
+        for (let sx = 0; sx < 4; sx++) {
+          const px = x + (sx + 0.5) / 4;
+          const py = y + (sy + 0.5) / 4;
+          if (paths.some((f, i) => Math.abs(py - f(px)) < 1.1 + i * 0.9)) cover++;
+        }
+      }
+      const t = cover >= 8 ? 1 : 0; // hard pixels, as in a flat logo saved without anti-aliasing
+      return [Math.round(255 * t), Math.round(191 + 64 * t), Math.round(99 + 156 * t)];
+    });
+  }
+
+  it("smooths the pixel staircase, so the fit has little to repair", () => {
+    const map = traceImage(strokes(), { mode: "mask", widthMm: 100 });
+    const fine = fitToNozzle(map, { nozzleMm: 0.2 }, { widthMm: 100 }).report;
+    const coarse = fitToNozzle(map, { nozzleMm: 0.4 }, { widthMm: 100 }).report;
+    expect(fine.gap.count).toBe(0);
+    expect(coarse.gap.count).toBe(0);
+    expect(fine.changedPct).toBeLessThan(5);
+    expect(fine.changedPct).toBeLessThan(coarse.changedPct);
+  });
+
+  it("gives edges that do not follow the source pixels", () => {
+    const map = traceImage(strokes(), { mode: "mask", widthMm: 100, maxCells: 8_000_000 });
+    // Each step of a staircase is a sharp turn. A smooth stroke has few of them.
+    const chains = boundaryChains(map);
+    let sharp = 0;
+    let points = 0;
+    for (const c of chains) {
+      const p = c.points;
+      const k = 6;
+      for (let i = k; i + k < p.length; i += k) {
+        const a = Math.atan2(p[i][1] - p[i - k][1], p[i][0] - p[i - k][0]);
+        const b = Math.atan2(p[i + k][1] - p[i][1], p[i + k][0] - p[i][0]);
+        const d = Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
+        if (d > 0.5) sharp++;
+        points++;
+      }
+    }
+    expect(sharp / points).toBeLessThan(0.25); // 0.33 when the blur ran before enlarging
+  });
+});
+
 describe("lengths", () => {
   it("reads units", () => {
     expect(parseLength("5in")).toBeCloseTo(127);

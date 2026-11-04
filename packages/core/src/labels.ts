@@ -46,7 +46,9 @@ export interface TraceOptions {
   keepEnclosed?: boolean;
 }
 
-const DEFAULT_MAX_CELLS = 8_000_000;
+// Files use a 0.0127 mm grid wherever this budget allows. Coarser grids made the nozzle fit unstable on real line art:
+// a truck at 100 mm went from 3% changed to 27%, with gaps left. Only previews should go coarser.
+const DEFAULT_MAX_CELLS = 32_000_000;
 const DEFAULT_MIN_CELL_MM = 0.0127;
 
 function rgbAt(img: RasterImage, i: number): Rgb {
@@ -192,9 +194,10 @@ function traceMask(img: RasterImage, a: TraceOptions): LabelMap {
   const cw = box.x1 - box.x0;
   const ch = box.y1 - box.y0;
   const grid = planGrid(cw, ch, a);
-  // Blur at source resolution, then enlarge: the same result as blurring afterward, at a fraction of the work.
-  const soft = gaussianBlur(cropFloat(f, w, box), cw, ch, 0.35);
-  const big = resizeCubic(soft, cw, ch, grid.width, grid.height);
+  // Enlarge, then blur. The order matters: a blur of a third of a pixel does almost nothing at source resolution, so
+  // the pixel staircase survives, and the nozzle fit then treats every step as detail to repair.
+  const enlarged = resizeCubic(cropFloat(f, w, box), cw, ch, grid.width, grid.height);
+  const big = gaussianBlur(enlarged, grid.width, grid.height, 0.35 * grid.cellsPerSrc);
   const hard = new Float32Array(big.length);
   for (let i = 0; i < big.length; i++) hard[i] = big[i] > 0.5 ? 1 : 0;
   const smooth = gaussianBlur(hard, grid.width, grid.height, 1.5);
@@ -319,8 +322,8 @@ function traceColors(img: RasterImage, a: TraceOptions): LabelMap {
   const lab = new Uint8Array(size);
   for (let k = 0; k < pal.length; k++) {
     // Keep the highest weight one class at a time, so only two full-size maps are ever held.
-    const soft = gaussianBlur(cropFloat(weights[k], w, box), cw, ch, 0.35);
-    const big = resizeCubic(soft, cw, ch, grid.width, grid.height);
+    const enlarged = resizeCubic(cropFloat(weights[k], w, box), cw, ch, grid.width, grid.height);
+    const big = gaussianBlur(enlarged, grid.width, grid.height, 0.35 * grid.cellsPerSrc);
     for (let i = 0; i < size; i++) {
       if (big[i] > best[i]) {
         best[i] = big[i];

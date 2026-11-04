@@ -66,6 +66,7 @@ export interface FileResult {
   kind: "svg" | "dxf" | "3mf";
   bytes: Uint8Array;
   nozzleMm: number | null;
+  sizeText: string;
 }
 
 export interface PlatePart {

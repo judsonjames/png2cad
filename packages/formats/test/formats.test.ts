@@ -93,6 +93,71 @@ describe("a whole job", () => {
   });
 });
 
+describe("size", () => {
+  const dxfSpan = (bytes: Uint8Array) => {
+    const pts = readDxf(dec.decode(bytes)).flatMap((c) => c.points);
+    const span = (i: 0 | 1) => Math.max(...pts.map((p) => p[i])) - Math.min(...pts.map((p) => p[i]));
+    return {
+      width: span(0),
+      height: span(1),
+      lo: [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))],
+    };
+  };
+  const svgWidth = (bytes: Uint8Array) => Number(/width="([\d.]+)mm"/.exec(dec.decode(bytes))?.[1]);
+  const plateWidth = (bytes: Uint8Array) => {
+    const model = strFromU8(unzipSync(bytes)["3D/3dmodel.model"]);
+    const xs = [...model.matchAll(/<vertex x="([^"]+)"/g)].map((m) => Number(m[1]));
+    return Math.max(...xs) - Math.min(...xs);
+  };
+  const job = (units: "mm" | "in", perColor = false): JobRequest => ({
+    ...request,
+    dxf: { units, perColor },
+    plate: { style: "flat" },
+  });
+
+  it("a size in mm comes out as that number in every file", () => {
+    const r = runJob(badge(), job("mm"), wasm);
+    const by = (kind: string) => r.files.find((f) => f.kind === kind)?.bytes as Uint8Array;
+    expect(svgWidth(by("svg"))).toBeCloseTo(25, 1);
+    expect(dxfSpan(by("dxf")).width).toBeGreaterThan(24.9);
+    expect(dxfSpan(by("dxf")).width).toBeLessThan(25.05);
+    expect(plateWidth(by("3mf"))).toBeGreaterThan(24.9);
+    expect(plateWidth(by("3mf"))).toBeLessThan(25.05);
+    expect(r.findings.filter((f) => f.severity === "fault")).toEqual([]);
+  });
+
+  it("states each file's real size, in that file's units", () => {
+    const pick = (units: "mm" | "in") =>
+      runJob(badge(), job(units), wasm).files.find((f) => f.kind === "dxf")?.sizeText;
+    expect(pick("mm")).toMatch(/^25\.0 x [\d.]+ mm$/);
+    expect(pick("in")).toMatch(/^0\.98 x [\d.]+ in$/);
+  });
+
+  it("a height can set the size", () => {
+    const r = runJob(badge(), { ...job("mm"), widthMm: undefined, heightMm: 30 }, wasm);
+    expect(dxfSpan(r.files.find((f) => f.kind === "dxf")?.bytes as Uint8Array).height).toBeCloseTo(30, 0);
+  });
+
+  it("per-color DXFs line up with the main file", () => {
+    const r = runJob(badge(), { ...job("mm", true), svg: undefined, plate: undefined }, wasm);
+    const main = dxfSpan(r.files.find((f) => f.name === "badge_n0.4.dxf")?.bytes as Uint8Array);
+    const red = dxfSpan(r.files.find((f) => f.name === "badge_n0.4_red.dxf")?.bytes as Uint8Array);
+    // The red square sits inside the disc, so it must not start at the origin.
+    expect(main.lo[0]).toBeCloseTo(0, 3);
+    expect(red.lo[0]).toBeGreaterThan(5);
+    expect(red.lo[1]).toBeGreaterThan(5);
+  });
+
+  it("a file that misses the size fails its check, in either direction", () => {
+    const bytes = runJob(badge(), { ...job("mm"), svg: undefined, plate: undefined }, wasm).files[0].bytes;
+    const text = dec.decode(bytes);
+    const code = (w: number) => verifyDxf(text, w).find((f) => f.code === "dxf.size")?.severity;
+    expect(code(25)).toBe("pass");
+    expect(code(100)).toBe("fault");
+    expect(code(5)).toBe("fault");
+  });
+});
+
 describe("verifiers catch damage", () => {
   const made = () => runJob(badge(), request, wasm);
 

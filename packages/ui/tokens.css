@@ -1,10 +1,8 @@
-/* Design tokens: one dark theme in color schemes. A scheme is an accent and a
-   background, set on the root element as data-accent and data-base
-   (src/scheme.ts); without them, red on black. Every accent and background pair keeps text at 4.5:1
-   and control edges at 3:1 (checked for all 40 pairs when they were chosen);
-   status colors never change with the scheme. Colors are named by role;
+/* Design tokens: one dark theme, red on black. Text keeps 4.5:1 and control edges
+   3:1; status colors are separate from the accent. Colors are named by role;
    components use only these. Breakpoints cannot be custom properties in media
-   queries; they are 600, 900 and 1200 px everywhere. Pair with fonts.css for the font files. */
+   queries; they are 600, 900 and 1200 px everywhere. Pair with fonts.css for the
+   font files. */
 :root {
   /* Type */
   --font: "Fira Sans", system-ui, sans-serif;
@@ -29,7 +27,7 @@
   --radius: 0.5rem;
   --radius-lg: 0.75rem;
 
-  /* Status: fixed in every scheme. Danger is told apart from a
+  /* Status. Danger is told apart from a
      red accent by its filled style and its words, never by hue alone. */
   --ok: #5fd38d;
   --ok-bg: #1d4a32;
@@ -60,13 +58,9 @@
   color-scheme: dark;
 }
 
-/* Mixed from the scheme. Declared again wherever a scheme is set (a preview
-   inside the page, say), since children would otherwise inherit the root's
-   already mixed values. --accent marks things (edges, swatches); --accent-text
-   is its readable shade for links, accent text and the focus ring. */
-:root,
-[data-accent],
-[data-base] {
+/* --accent marks things (edges, swatches); --accent-text is its readable shade
+   for links, accent text and the focus ring. */
+:root {
   --link: var(--accent-text);
   --focus: var(--accent-text);
   --selected-bg: color-mix(in srgb, var(--accent) 20%, var(--panel));
@@ -74,9 +68,8 @@
   --selected-text: color-mix(in srgb, var(--accent-text) 35%, #ffffff);
 }
 
-/* Backgrounds (data-base on the root element or any element). */
-:root,
-[data-base="black"] {
+/* Backgrounds. */
+:root {
   --surface: #0d0908;
   --panel: #1b1210;
   --panel-raised: #211612;
@@ -91,97 +84,8 @@
   --border-strong: #3f3836;
   --border-input: #6d6766;
 }
-[data-base="graphite"] {
-  --surface: #0f1012;
-  --panel: #18191c;
-  --panel-raised: #1c1d21;
-  --sunken: #08090a;
-  --hover: #26282d;
-  --input: #0f1012;
-  --text: #e9ebee;
-  --text-strong: #f7f8fa;
-  --text-label: #c6cad1;
-  --muted: #a0a6b0;
-  --border: #2f3033;
-  --border-strong: #3d3e40;
-  --border-input: #6b6c6e;
-}
-[data-base="navy"] {
-  --surface: #0e141d;
-  --panel: #151e2a;
-  --panel-raised: #17202c;
-  --sunken: #080e15;
-  --hover: #243345;
-  --input: #0e141d;
-  --text: #e7edf4;
-  --text-strong: #edf5ff;
-  --text-label: #bacadd;
-  --muted: #96a7bc;
-  --border: #2c343f;
-  --border-strong: #3a424c;
-  --border-input: #696f77;
-}
-[data-base="forest"] {
-  --surface: #0a110d;
-  --panel: #121c16;
-  --panel-raised: #16211a;
-  --sunken: #050a07;
-  --hover: #1f2e25;
-  --input: #0a110d;
-  --text: #e6f0e8;
-  --text-strong: #f3faf5;
-  --text-label: #bfd1c4;
-  --muted: #97ad9e;
-  --border: #2a332d;
-  --border-strong: #38403b;
-  --border-input: #676e6a;
-}
-[data-base="plum"] {
-  --surface: #110c14;
-  --panel: #1b1420;
-  --panel-raised: #201826;
-  --sunken: #09060b;
-  --hover: #2b2132;
-  --input: #110c14;
-  --text: #f0e9f3;
-  --text-strong: #faf5fc;
-  --text-label: #d3c4da;
-  --muted: #ac9cb4;
-  --border: #322c36;
-  --border-strong: #3f3a44;
-  --border-input: #6d6970;
-}
-/* Accents (data-accent). */
-:root,
-[data-accent="red"] {
+/* Accent. */
+:root {
   --accent: #e00020;
   --accent-text: #ff6b7c;
-}
-[data-accent="orange"] {
-  --accent: #f26a1b;
-  --accent-text: #ff9550;
-}
-[data-accent="gold"] {
-  --accent: #e0a800;
-  --accent-text: #f5c84c;
-}
-[data-accent="green"] {
-  --accent: #2fb36b;
-  --accent-text: #62d995;
-}
-[data-accent="teal"] {
-  --accent: #3fb89d;
-  --accent-text: #70d5be;
-}
-[data-accent="blue"] {
-  --accent: #3b82f6;
-  --accent-text: #7cb2ff;
-}
-[data-accent="purple"] {
-  --accent: #8b5cf6;
-  --accent-text: #b99bff;
-}
-[data-accent="pink"] {
-  --accent: #e83e8c;
-  --accent-text: #ff85bf;
 }

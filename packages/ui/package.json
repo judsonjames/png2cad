@@ -8,8 +8,7 @@
     "./tokens.css": "./tokens.css",
     "./fonts.css": "./fonts.css",
     "./fonts/*": "./fonts/*",
-    "./components": "./src/components/index.ts",
-    "./scheme": "./src/scheme.ts"
+    "./components": "./src/components/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p ."

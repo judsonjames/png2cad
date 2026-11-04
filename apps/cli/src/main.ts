@@ -18,6 +18,7 @@ const { values, positionals } = parseArgs({
     out: { type: "string", default: "out" },
     svg: { type: "boolean", default: false },
     dxf: { type: "boolean", default: false },
+    "dxf-units": { type: "string", default: "mm" },
     "3mf": { type: "boolean", default: false },
     "per-color": { type: "boolean", default: false },
     palette: { type: "string" },
@@ -75,7 +76,7 @@ const request: JobRequest = {
   heightMm,
   nozzles: values.nozzle.split(",").map(Number),
   svg: values.svg ? { source: "art" } : undefined,
-  dxf: values.dxf ? { units: "in", perColor: values["per-color"] } : undefined,
+  dxf: values.dxf ? { units: values["dxf-units"] as "mm" | "in", perColor: values["per-color"] } : undefined,
   plate: values["3mf"]
     ? {
         style: values.style as "inset" | "relief" | "flat",

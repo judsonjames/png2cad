@@ -36,6 +36,10 @@ test("a sample becomes checked SVG, DXF and 3MF files", async ({ page }) => {
   await expect(page.getByText("Do Not Use These Files Yet")).toHaveCount(0);
   await page.screenshot({ path: join(shots, "3-files.png"), fullPage: false });
 
+  // The default size is 100 mm, and every file says so in the units it is written in.
+  const list = page.getByRole("list", { name: "Files" });
+  await expect(list.getByText(/^100\.0 x [\d.]+ mm, /)).toHaveCount(2);
+  await expect(list.getByText(/^\d+\.\d x \d+\.\d x 3\.2 mm, /)).toHaveCount(1);
   const names = await page.getByRole("list", { name: "Files" }).getByRole("listitem").count();
   expect(names).toBeGreaterThanOrEqual(3);
   for (const button of await page.getByRole("button", { name: /^Download .+\.(svg|dxf|3mf)$/ }).all()) {

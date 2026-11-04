@@ -1,6 +1,5 @@
-import { AppHeader, DropPanel, Pane, SchemePicker, Workspace } from "@png2cad/ui/components";
-import { applyScheme, DEFAULT_SCHEME, toScheme, type Scheme } from "@png2cad/ui/scheme";
-import { useEffect, useState } from "react";
+import { AppHeader, Pane, Workspace } from "@png2cad/ui/components";
+import { useEffect } from "react";
 import { ExportPanel } from "./panels/ExportPanel";
 import { OutputPanel } from "./panels/OutputPanel";
 import { SizePanel } from "./panels/SizePanel";
@@ -8,28 +7,9 @@ import { TracePanel } from "./panels/TracePanel";
 import { useApp } from "./store";
 import { Stage } from "./views/Stage";
 
-const SAVED_SCHEME = "png2cad.scheme";
-
-function savedScheme(): Scheme {
-  try {
-    return toScheme(JSON.parse(localStorage.getItem(SAVED_SCHEME) ?? "null"));
-  } catch {
-    return DEFAULT_SCHEME;
-  }
-}
-
 export function App() {
   const hasImage = useApp((s) => s.image !== null);
   const loadImage = useApp((s) => s.loadImage);
-  const [scheme, setScheme] = useState(savedScheme);
-  useEffect(() => {
-    applyScheme(scheme);
-    try {
-      localStorage.setItem(SAVED_SCHEME, JSON.stringify(scheme));
-    } catch {
-      // Browser storage is a convenience.
-    }
-  }, [scheme]);
 
   // Paste an image from anywhere on the page.
   useEffect(() => {
@@ -44,12 +24,7 @@ export function App() {
   return (
     <div className="app">
       <AppHeader subtitle="Image to DXF, SVG and 3MF">
-        <div className="app-header-end">
-          <span className="app-local">Runs in your browser. Your image is never uploaded.</span>
-          <DropPanel label="Color Scheme" button="Color Scheme">
-            {() => <SchemePicker value={scheme} onChange={setScheme} />}
-          </DropPanel>
-        </div>
+        <span className="app-local">Runs in your browser. Your image is never uploaded.</span>
       </AppHeader>
       <Workspace always columns="minmax(0, 1fr) 24rem">
         <Pane label="Picture" className="app-stage-pane">

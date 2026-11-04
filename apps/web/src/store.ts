@@ -1,6 +1,6 @@
 /** The app's one store: settings and results. Components read it; only actions here start work. */
 import { MM_PER_INCH, type Box, type Rgb } from "@png2cad/core";
-import type { BambuTemplate, DxfUnits, PlateStyle } from "@png2cad/formats";
+import type { BambuTemplate, PlateStyle } from "@png2cad/formats";
 import { zipSync } from "fflate";
 import { create } from "zustand";
 import { Cancelled, cancel, run } from "./engine";
@@ -20,7 +20,6 @@ export interface Settings {
   svgFitted: boolean;
   backdrop: string | null;
   makeDxf: boolean;
-  dxfUnits: DxfUnits;
   perColor: boolean;
   makePlate: boolean;
   style: PlateStyle;
@@ -45,7 +44,6 @@ export const DEFAULTS: Settings = {
   svgFitted: false,
   backdrop: null,
   makeDxf: true,
-  dxfUnits: "in",
   perColor: false,
   makePlate: true,
   style: "inset",
@@ -139,7 +137,8 @@ function exportRequest(state: State): ExportRequest {
     svg: s.makeSvg
       ? { source: s.svgFitted ? "nozzle" : "art", backdrop: s.backdrop ?? undefined, tolMm: s.tolMm }
       : null,
-    dxf: s.makeDxf ? { units: s.dxfUnits, perColor: s.perColor } : null,
+    // The DXF speaks the same units as the size: 100 mm comes out as 100, never as 3.94.
+    dxf: s.makeDxf ? { units: s.unit, perColor: s.perColor } : null,
     plate: s.makePlate
       ? {
           style: s.style,

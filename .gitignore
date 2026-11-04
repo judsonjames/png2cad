@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+out/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+__pycache__/
+*.pyc
+.claude/

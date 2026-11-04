@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+out
+package-lock.json
+skill
+packages/ui/fonts

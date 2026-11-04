@@ -1,0 +1,187 @@
+/* Design tokens: one dark theme in color schemes. A scheme is an accent and a
+   background, set on the root element as data-accent and data-base
+   (src/scheme.ts); without them, red on black. Every accent and background pair keeps text at 4.5:1
+   and control edges at 3:1 (checked for all 40 pairs when they were chosen);
+   status colors never change with the scheme. Colors are named by role;
+   components use only these. Breakpoints cannot be custom properties in media
+   queries; they are 600, 900 and 1200 px everywhere. Pair with fonts.css for the font files. */
+:root {
+  /* Type */
+  --font: "Fira Sans", system-ui, sans-serif;
+  --font-heading: "Fira Sans", system-ui, sans-serif;
+  --font-mono: "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem; /* 12 px: labels in tight places only, never body text */
+  --text-sm: 0.8125rem; /* 13 px: the smallest body text */
+  --text-md: 0.9375rem; /* 15 px */
+  --text-lg: 1.125rem; /* 18 px */
+  --text-xl: 1.5rem; /* 24 px */
+  --text-2xl: 2rem; /* 32 px */
+  --line: 1.5;
+
+  /* Space and shape */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Status: fixed in every scheme. Danger is told apart from a
+     red accent by its filled style and its words, never by hue alone. */
+  --ok: #5fd38d;
+  --ok-bg: #1d4a32;
+  --ok-text: #c8f7da;
+  --warn: #e6ad60;
+  --warn-bg: #3d2c18;
+  --warn-text: #ffdfa1;
+  --danger: #ff6b6b;
+  --danger-bg: #7a1f26;
+  --danger-text: #ffe0dc;
+
+  /* The names the docs used before the role names (kept as aliases). */
+  --fg: var(--text);
+  --fg-strong: var(--text-strong);
+  --fg-2: var(--text-label);
+  --fg-muted: var(--muted);
+  --bg: var(--surface);
+  --bg-2: var(--panel);
+  --bg-hover: var(--hover);
+  --brand: var(--accent-text);
+  --current-bg: var(--selected-bg);
+  --current-border: var(--selected-border);
+  --current-fg: var(--selected-text);
+  --warning: var(--warn);
+  --warning-bg: var(--warn-bg);
+  --code-bg: var(--sunken);
+
+  color-scheme: dark;
+}
+
+/* Mixed from the scheme. Declared again wherever a scheme is set (a preview
+   inside the page, say), since children would otherwise inherit the root's
+   already mixed values. --accent marks things (edges, swatches); --accent-text
+   is its readable shade for links, accent text and the focus ring. */
+:root,
+[data-accent],
+[data-base] {
+  --link: var(--accent-text);
+  --focus: var(--accent-text);
+  --selected-bg: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  --selected-border: color-mix(in srgb, var(--accent-text) 70%, var(--panel));
+  --selected-text: color-mix(in srgb, var(--accent-text) 35%, #ffffff);
+}
+
+/* Backgrounds (data-base on the root element or any element). */
+:root,
+[data-base="black"] {
+  --surface: #0d0908;
+  --panel: #1b1210;
+  --panel-raised: #211612;
+  --sunken: #070504;
+  --hover: #2d1b15;
+  --input: #0d0908;
+  --text: #f6ede8;
+  --text-strong: #fffaf7;
+  --text-label: #e6d7cf;
+  --muted: #b8a69d;
+  --border: #322a28;
+  --border-strong: #3f3836;
+  --border-input: #6d6766;
+}
+[data-base="graphite"] {
+  --surface: #0f1012;
+  --panel: #18191c;
+  --panel-raised: #1c1d21;
+  --sunken: #08090a;
+  --hover: #26282d;
+  --input: #0f1012;
+  --text: #e9ebee;
+  --text-strong: #f7f8fa;
+  --text-label: #c6cad1;
+  --muted: #a0a6b0;
+  --border: #2f3033;
+  --border-strong: #3d3e40;
+  --border-input: #6b6c6e;
+}
+[data-base="navy"] {
+  --surface: #0e141d;
+  --panel: #151e2a;
+  --panel-raised: #17202c;
+  --sunken: #080e15;
+  --hover: #243345;
+  --input: #0e141d;
+  --text: #e7edf4;
+  --text-strong: #edf5ff;
+  --text-label: #bacadd;
+  --muted: #96a7bc;
+  --border: #2c343f;
+  --border-strong: #3a424c;
+  --border-input: #696f77;
+}
+[data-base="forest"] {
+  --surface: #0a110d;
+  --panel: #121c16;
+  --panel-raised: #16211a;
+  --sunken: #050a07;
+  --hover: #1f2e25;
+  --input: #0a110d;
+  --text: #e6f0e8;
+  --text-strong: #f3faf5;
+  --text-label: #bfd1c4;
+  --muted: #97ad9e;
+  --border: #2a332d;
+  --border-strong: #38403b;
+  --border-input: #676e6a;
+}
+[data-base="plum"] {
+  --surface: #110c14;
+  --panel: #1b1420;
+  --panel-raised: #201826;
+  --sunken: #09060b;
+  --hover: #2b2132;
+  --input: #110c14;
+  --text: #f0e9f3;
+  --text-strong: #faf5fc;
+  --text-label: #d3c4da;
+  --muted: #ac9cb4;
+  --border: #322c36;
+  --border-strong: #3f3a44;
+  --border-input: #6d6970;
+}
+/* Accents (data-accent). */
+:root,
+[data-accent="red"] {
+  --accent: #e00020;
+  --accent-text: #ff6b7c;
+}
+[data-accent="orange"] {
+  --accent: #f26a1b;
+  --accent-text: #ff9550;
+}
+[data-accent="gold"] {
+  --accent: #e0a800;
+  --accent-text: #f5c84c;
+}
+[data-accent="green"] {
+  --accent: #2fb36b;
+  --accent-text: #62d995;
+}
+[data-accent="teal"] {
+  --accent: #3fb89d;
+  --accent-text: #70d5be;
+}
+[data-accent="blue"] {
+  --accent: #3b82f6;
+  --accent-text: #7cb2ff;
+}
+[data-accent="purple"] {
+  --accent: #8b5cf6;
+  --accent-text: #b99bff;
+}
+[data-accent="pink"] {
+  --accent: #e83e8c;
+  --accent-text: #ff85bf;
+}

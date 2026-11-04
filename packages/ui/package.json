@@ -1,0 +1,21 @@
+{
+  "name": "@png2cad/ui",
+  "private": true,
+  "license": "BSD-3-Clause",
+  "description": "Design tokens, fonts and React components. No geometry.",
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./fonts.css": "./fonts.css",
+    "./fonts/*": "./fonts/*",
+    "./components": "./src/components/index.ts",
+    "./scheme": "./src/scheme.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "peerDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

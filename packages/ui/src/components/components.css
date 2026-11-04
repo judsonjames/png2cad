@@ -1,0 +1,1572 @@
+/* The shared components' styles: tokens only (tokens.css), every class
+   prefixed `p2c-` so they never meet an app's own styles. */
+
+.p2c-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Focus: one visible ring for every interactive element. The `:where` rule
+   (no specificity) covers plain links, buttons and inputs in the apps too. */
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.p2c-button:focus-visible,
+.p2c-tab:focus-visible,
+.p2c-toggle:focus-visible,
+.p2c-nav a:focus-visible,
+.p2c-nav button:focus-visible,
+.p2c-drop-button:focus-visible,
+.p2c-field input:focus-visible,
+.p2c-field select:focus-visible,
+.p2c-field textarea:focus-visible,
+.p2c-select:focus-visible,
+.p2c-number input:focus-visible,
+.p2c-disclosure summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Buttons */
+.p2c-button {
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-input);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.p2c-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+/* A link drawn as a button (ButtonLink). */
+a.p2c-button {
+  display: inline-block;
+  text-decoration: none;
+}
+.p2c-button[aria-busy="true"] {
+  cursor: progress;
+}
+.p2c-button-primary {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+}
+/* Danger is filled, so it never looks like a red accent's tinted button. */
+.p2c-button-danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font-weight: 600;
+}
+/* Disabled: muted text and a dashed edge instead of opacity, which took the
+   text below 4.5:1. A pressed toggle keeps its selected background so the
+   current choice still shows. */
+.p2c-button:disabled,
+.p2c-toggle:disabled {
+  background: transparent;
+  border-color: var(--border-strong);
+  border-style: dashed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-toggle[aria-pressed="true"]:disabled {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--text-label);
+}
+.p2c-button-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 25%, var(--danger-bg));
+}
+.p2c-button-quiet {
+  border-color: transparent;
+  color: var(--link);
+  padding-inline: var(--space-2);
+}
+
+/* Badges and tones */
+.p2c-badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-label);
+  white-space: nowrap;
+}
+.p2c-badge.p2c-tone-accent {
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+  background: var(--selected-bg);
+}
+.p2c-badge.p2c-tone-ok {
+  border-color: var(--ok);
+  color: var(--ok-text);
+  background: var(--ok-bg);
+}
+.p2c-badge.p2c-tone-warn {
+  border-color: var(--warn);
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+.p2c-badge.p2c-tone-danger {
+  border-color: var(--danger);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+.p2c-badge-with-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+/* The dot takes the badge's text color: muted when neutral, the tone otherwise. */
+.p2c-badge-dot {
+  flex: none;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Banners */
+.p2c-banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--line);
+}
+.p2c-banner + .p2c-banner {
+  margin-top: var(--space-2);
+}
+.p2c-banner-title {
+  margin-right: var(--space-2);
+}
+/* An attention item: message and detail on the left, one action on the right
+   (below the text when the banner is narrow). */
+.p2c-banner-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.p2c-banner-text {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.p2c-banner-detail {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+}
+.p2c-banner-action {
+  flex: none;
+}
+.p2c-banner-ok {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+.p2c-banner-warn {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.p2c-banner-danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/* Header and navigation */
+.p2c-app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.p2c-brand {
+  display: flex;
+  flex-direction: column;
+}
+/* The lens mark before the product name, as one group. */
+.p2c-brand-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.p2c-logo {
+  display: block;
+  flex: none;
+}
+/* The product name, as the docs' logo: heading face, 600 weight, 20 px, the
+   product word in the accent color. */
+.p2c-brand-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.p2c-brand-product {
+  color: var(--accent-text);
+}
+a.p2c-brand-name {
+  text-decoration: none;
+}
+a.p2c-brand-name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-text);
+  text-underline-offset: 0.2em;
+}
+.p2c-brand-subtitle {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.p2c-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.p2c-nav a,
+.p2c-nav button {
+  font: inherit;
+  font-size: var(--text-sm);
+  background: transparent;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--link);
+  text-decoration: none;
+}
+.p2c-nav a:hover,
+.p2c-nav button:hover {
+  background: var(--hover);
+}
+.p2c-nav a[aria-current="page"],
+.p2c-nav button[aria-current="page"] {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+}
+@media (max-width: 600px) {
+  .p2c-app-header {
+    padding: var(--space-3) var(--space-4);
+  }
+  /* Two tight rows rather than a sideways strip that hides the last pages. */
+  .p2c-nav {
+    gap: var(--space-1);
+  }
+  .p2c-nav a,
+  .p2c-nav button {
+    padding: var(--space-1) var(--space-2);
+    white-space: nowrap;
+  }
+}
+
+/* Sections */
+.p2c-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+.p2c-section > :not(:first-child) {
+  margin-top: var(--space-3);
+}
+.p2c-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.p2c-section h2,
+.p2c-section h3 {
+  margin: 0;
+  color: var(--text-strong);
+}
+.p2c-section h2 {
+  font-size: var(--text-lg);
+}
+.p2c-section h3 {
+  font-size: var(--text-md);
+}
+.p2c-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.p2c-section-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Long badges wrap on phones instead of widening the page. */
+@media (max-width: 600px) {
+  .p2c-badge {
+    white-space: normal;
+  }
+}
+.p2c-help {
+  margin: var(--space-2) 0 var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--line);
+  color: var(--muted);
+}
+.p2c-disclosure {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}
+.p2c-disclosure summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--text-label);
+}
+.p2c-disclosure-body {
+  margin-top: var(--space-3);
+}
+
+/* Tabs */
+.p2c-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+  margin: var(--space-3) 0;
+}
+.p2c-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--text-label);
+  cursor: pointer;
+}
+.p2c-tab[aria-selected="true"] {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+}
+.p2c-tab:hover:not([aria-selected="true"]) {
+  background: var(--hover);
+}
+.p2c-tab-swatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+.p2c-tab-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Metrics */
+.p2c-metric-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.p2c-columns-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.p2c-columns-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.p2c-columns-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 600px) {
+  .p2c-columns-3,
+  .p2c-columns-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.p2c-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.p2c-metric-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.p2c-metric-value {
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  /* Breaks a word only when it cannot fit at all, never mid-word in a narrow column. */
+  overflow-wrap: break-word;
+}
+.p2c-metric-missing .p2c-metric-value {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.p2c-metric-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.p2c-metric.p2c-tone-warn .p2c-metric-value {
+  color: var(--warn);
+}
+.p2c-metric.p2c-tone-danger .p2c-metric-value {
+  color: var(--danger);
+}
+
+/* Forms */
+.p2c-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.p2c-field label {
+  font-size: var(--text-sm);
+  color: var(--text-label);
+}
+.p2c-field input,
+.p2c-field select,
+.p2c-field textarea,
+.p2c-select,
+.p2c-number input {
+  font: inherit;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text-strong);
+  min-width: 0;
+}
+.p2c-field input:disabled,
+.p2c-field select:disabled,
+.p2c-field textarea:disabled,
+.p2c-select:disabled,
+.p2c-number input:disabled {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-field:has(:disabled) label {
+  color: var(--muted);
+}
+.p2c-field-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.p2c-field-error input,
+.p2c-field-error select {
+  border-color: var(--danger);
+}
+.p2c-field-error .p2c-field-note {
+  color: var(--danger-text);
+}
+/* Select: the native list with the theme's chevron instead of the system one. */
+.p2c-select {
+  appearance: none;
+  padding-right: calc(var(--space-3) + 1.25rem);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right calc(var(--space-3) + 5px) center,
+    right var(--space-3) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+.p2c-select option {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+/* Checkbox: native, in the accent color (selection is the accent's job). */
+.p2c-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+.p2c-checkbox input {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--accent);
+  cursor: inherit;
+}
+.p2c-checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.p2c-checkbox:has(input:disabled) {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-number {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.p2c-number input {
+  width: 100%;
+}
+.p2c-number-unit {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.p2c-toggle-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.p2c-toggle {
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-label);
+  cursor: pointer;
+}
+.p2c-toggle[aria-pressed="true"] {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+}
+
+/* Tables */
+.p2c-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.p2c-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.p2c-table th,
+.p2c-table td {
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.p2c-table th {
+  color: var(--text-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.p2c-table .p2c-end {
+  text-align: end;
+}
+/* Highlighted rows: a tinted background and a bar on the leading edge, so
+   the row stands out without relying on the tint alone. */
+.p2c-table tr.p2c-row-warn td {
+  background: var(--warn-bg);
+}
+.p2c-table tr.p2c-row-danger td {
+  background: var(--danger-bg);
+}
+.p2c-table tr.p2c-row-selected td {
+  background: var(--selected-bg);
+}
+.p2c-table tr.p2c-row-warn td:first-child {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.p2c-table tr.p2c-row-danger td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+.p2c-table tr.p2c-row-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--selected-border);
+}
+
+/* Dialogs and dangerous actions */
+.p2c-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: var(--space-5);
+  border: 1px solid var(--selected-border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+.p2c-dialog-wide {
+  width: min(48rem, calc(100vw - 2rem));
+}
+.p2c-dialog::backdrop {
+  background: rgb(5 10 18 / 0.73);
+}
+.p2c-dialog h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+  color: var(--text-strong);
+}
+.p2c-dialog-body {
+  font-size: var(--text-sm);
+  line-height: var(--line);
+}
+.p2c-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.p2c-danger-zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--danger);
+  border-radius: var(--radius);
+}
+.p2c-danger-zone-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger-text);
+}
+.p2c-danger-zone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Pictures */
+.p2c-live-image {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  background: var(--sunken);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.p2c-live-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.p2c-live-overlay {
+  position: absolute;
+  inset: 0;
+}
+.p2c-live-overlay > canvas,
+.p2c-live-overlay > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.p2c-live-age,
+.p2c-live-chip {
+  position: absolute;
+  font-size: var(--text-xs);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 0.6);
+  color: var(--text);
+}
+.p2c-live-age {
+  right: var(--space-2);
+  bottom: var(--space-2);
+}
+.p2c-live-chip {
+  left: var(--space-2);
+  top: var(--space-2);
+  max-width: calc(100% - 2 * var(--space-2));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.p2c-live-message {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.p2c-age {
+  font-variant-numeric: tabular-nums;
+}
+.p2c-age-stale {
+  color: var(--warn);
+}
+
+/* Charts and errors */
+.p2c-sparkline {
+  display: block;
+  width: 100%;
+}
+.p2c-sparkline polyline {
+  fill: none;
+  stroke: var(--accent-text);
+  stroke-width: 1.5;
+}
+/* An error carries a bar as well as its color, apart from red accent text. */
+.p2c-error {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--danger);
+  font-size: var(--text-sm);
+  color: var(--danger-text);
+}
+/* An empty StatusText stays in the page for screen readers but out of the
+   layout (no margin, no flex gap). */
+.p2c-status:empty {
+  position: absolute;
+  margin: 0;
+}
+/* Retry sits in the line of text, not as a full-height button. */
+.p2c-status-retry {
+  padding-block: 0;
+  font-size: inherit;
+}
+
+/* Workspace: panes side by side from 1200 px (always for the desktop app),
+   each scrolling on its own; stacked below that. `.p2c-grow` passes the
+   pane's height down to a `.p2c-fit` picture. */
+.p2c-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.p2c-pane {
+  /* Positioned, so absolutely placed content (hidden table captions) scrolls
+     with the pane instead of stretching the page. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.p2c-fit {
+  display: flex;
+  justify-content: flex-start;
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  .p2c-workspace {
+    display: grid;
+    grid-template-columns: var(--p2c-workspace-columns, minmax(0, 3fr) minmax(0, 2fr));
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .p2c-pane {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    container-type: inline-size;
+  }
+  /* Grow to the pane's height; never shorter than their content, so what
+     follows a picture stays inside its panel and the pane scrolls instead. */
+  .p2c-grow,
+  .p2c-grow > .p2c-tab-panel:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+  }
+  /* As tall as the picture at the pane's width (less --p2c-fit-inset for the
+     padding around it), giving up height first when the pane is shorter. Size
+     containment keeps the picture out of its minimum, which is 14rem. */
+  .p2c-fit {
+    container-type: size;
+    flex: 0 1 calc((100cqw - var(--p2c-fit-inset, 0px)) / var(--p2c-aspect, 1.7778));
+    min-height: 14rem;
+    align-items: flex-start;
+  }
+  .p2c-fit > .p2c-live-image,
+  .p2c-fit > canvas {
+    width: min(100cqw, 100cqh * var(--p2c-aspect, 1.7778));
+  }
+  .p2c-fit > canvas {
+    height: auto;
+  }
+}
+.p2c-workspace-always {
+  display: grid;
+  grid-template-columns: var(--p2c-workspace-columns, minmax(0, 3fr) minmax(0, 2fr));
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.p2c-workspace-always > .p2c-pane {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+/* Tooltips (Tooltip.tsx): an "i" marker anyone can spot, and a bubble in the
+   top layer with body-size text at full contrast. */
+.p2c-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.p2c-tip-marker {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
+  border: 1px solid var(--accent-text);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent-text);
+  font:
+    italic 700 0.75rem / 1 Georgia,
+    "Times New Roman",
+    serif;
+  cursor: help;
+  vertical-align: middle;
+}
+/* The circle stays 18 px; the target is 24 px (WCAG 2.2 target size). The
+   inset counts from inside the 1 px border: 16 + 2 × 4 = 24. */
+.p2c-tip-marker::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+.p2c-tip-marker:hover,
+.p2c-tip-marker:focus-visible {
+  background: var(--accent-text);
+  color: var(--surface);
+}
+.p2c-tip-marker:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.p2c-tip-anchor {
+  display: inline-flex;
+}
+.p2c-tip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: min(24rem, calc(100vw - 16px));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text-strong);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: pre-line;
+  text-align: left;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+
+/* Drop-down panels (DropPanel.tsx): a compact button and a raised panel. */
+.p2c-drop-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 22rem;
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.p2c-drop-button:hover {
+  background: var(--hover);
+}
+.p2c-drop-panel {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 18rem;
+  max-width: min(32rem, calc(100vw - 16px));
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
+}
+
+/* Color scheme picker */
+.p2c-scheme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.p2c-scheme-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.p2c-scheme-row legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--text-label);
+}
+.p2c-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+.p2c-swatch:has(input:checked) {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--selected-text);
+}
+.p2c-swatch:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.p2c-swatch:has(input:disabled) {
+  border-style: dashed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-swatch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.p2c-swatch-chip {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.35);
+}
+.p2c-swatch-base {
+  border-radius: var(--radius-sm);
+}
+.p2c-scheme-preview {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.p2c-scheme-preview-tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+.p2c-scheme-preview-tab {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--link);
+}
+.p2c-scheme-preview-on {
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+}
+.p2c-scheme-preview-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.p2c-scheme-preview-button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--selected-border);
+  border-radius: var(--radius-sm);
+  background: var(--selected-bg);
+  color: var(--selected-text);
+}
+.p2c-scheme-preview-link {
+  color: var(--link);
+  text-decoration: underline;
+}
+.p2c-scheme-preview-muted {
+  color: var(--muted);
+}
+.p2c-scheme-preview-danger {
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--danger);
+  color: var(--danger-text);
+}
+
+/* Verdict and checks (status pages). Quiet when passing: only a warning or a
+   fault gets a colored box; the word beside each check carries the meaning. */
+.p2c-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.p2c-verdict-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-weight: 700;
+}
+.p2c-verdict-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.p2c-verdict-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+.p2c-verdict-detail {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+}
+.p2c-verdict-meta {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.p2c-verdict-pass .p2c-verdict-mark {
+  color: var(--ok);
+}
+.p2c-verdict-unknown .p2c-verdict-mark {
+  color: var(--muted);
+}
+.p2c-verdict-warn {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.p2c-verdict-fail {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+.p2c-verdict-warn .p2c-verdict-title,
+.p2c-verdict-fail .p2c-verdict-title {
+  color: inherit;
+}
+.p2c-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.p2c-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.p2c-check-state {
+  flex: none;
+  min-width: 5.5rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.p2c-check-warn .p2c-check-state {
+  color: var(--warn-text);
+}
+.p2c-check-fail .p2c-check-state {
+  color: var(--danger-text);
+}
+/* A fault's word sits in a filled box, so it is told apart from accent red. */
+.p2c-check-fail .p2c-check-state {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+}
+.p2c-check-pass .p2c-check-mark {
+  color: var(--ok);
+}
+.p2c-check-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.p2c-check-label {
+  color: var(--text-strong);
+}
+.p2c-check-pass .p2c-check-label {
+  color: var(--text-label);
+}
+.p2c-check-detail {
+  color: var(--muted);
+}
+.p2c-check-action {
+  flex: none;
+}
+.p2c-check-list .p2c-disclosure {
+  margin-top: var(--space-2);
+}
+
+/* Facts as label and value pairs */
+.p2c-key-value {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.p2c-key-value-row {
+  display: contents;
+}
+.p2c-key-value dt {
+  color: var(--muted);
+}
+.p2c-key-value dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empty and loading */
+.p2c-empty {
+  padding: var(--space-5) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.p2c-empty-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.p2c-empty-text {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.p2c-empty-action {
+  margin-top: var(--space-3);
+}
+.p2c-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.p2c-placeholder-line {
+  display: block;
+  height: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+}
+.p2c-placeholder-line:last-child {
+  width: 60%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .p2c-placeholder-line {
+    animation: p2c-placeholder-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes p2c-placeholder-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Progress and meters: native elements drawn in the theme's colors */
+.p2c-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+.p2c-progress-labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+.p2c-progress-text {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.p2c-progress progress,
+.p2c-progress meter {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--sunken);
+}
+.p2c-progress progress::-webkit-progress-bar {
+  background: var(--sunken);
+}
+/* Progress is not a status: a quiet fill, never the accent red that a fault
+   could be mistaken for. */
+.p2c-progress progress::-webkit-progress-value {
+  background: var(--text-label);
+}
+.p2c-progress progress::-moz-progress-bar {
+  background: var(--text-label);
+}
+/* No known end: moving stripes (still stripes when motion is reduced). */
+.p2c-progress progress:indeterminate::-webkit-progress-bar {
+  background: repeating-linear-gradient(-45deg, var(--muted) 0 0.5rem, var(--sunken) 0.5rem 1rem);
+  background-size: 200% 100%;
+}
+.p2c-progress progress:indeterminate::-moz-progress-bar {
+  background: repeating-linear-gradient(-45deg, var(--muted) 0 0.5rem, var(--sunken) 0.5rem 1rem);
+  background-size: 200% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .p2c-progress progress:indeterminate::-webkit-progress-bar {
+    animation: p2c-progress-stripes 1.2s linear infinite;
+  }
+  .p2c-progress progress:indeterminate::-moz-progress-bar {
+    animation: p2c-progress-stripes 1.2s linear infinite;
+  }
+}
+@keyframes p2c-progress-stripes {
+  to {
+    background-position: -1.414rem 0;
+  }
+}
+.p2c-progress meter::-webkit-meter-bar {
+  height: 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sunken);
+}
+.p2c-progress meter::-webkit-meter-optimum-value {
+  background: var(--ok);
+}
+.p2c-progress meter::-webkit-meter-suboptimum-value {
+  background: var(--warn);
+}
+.p2c-progress meter::-webkit-meter-even-less-good-value {
+  background: var(--danger);
+}
+.p2c-progress meter:-moz-meter-optimum::-moz-meter-bar {
+  background: var(--ok);
+}
+.p2c-progress meter:-moz-meter-sub-optimum::-moz-meter-bar {
+  background: var(--warn);
+}
+.p2c-progress meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
+  background: var(--danger);
+}
+
+/* Steps (Set Up vertical, calibration horizontal): a numbered circle, the
+   label and a note. Done is quiet; only a problem is colored. */
+.p2c-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-1);
+}
+.p2c-stepper-vertical {
+  flex-direction: column;
+}
+.p2c-stepper-horizontal {
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.p2c-step-button {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: start;
+}
+button.p2c-step-button {
+  cursor: pointer;
+}
+button.p2c-step-button:hover {
+  background: var(--hover);
+}
+.p2c-step-button[aria-current="step"] {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--selected-text);
+}
+.p2c-step-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.p2c-step-done .p2c-step-number {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.p2c-step-current .p2c-step-number {
+  border-color: currentColor;
+}
+.p2c-step-problem .p2c-step-number {
+  color: var(--warn-text);
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.p2c-step-todo .p2c-step-label {
+  color: var(--muted);
+}
+.p2c-step-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.p2c-step-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* A page's sections as a vertical list */
+.p2c-section-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.p2c-section-nav a,
+.p2c-section-nav button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.p2c-section-nav a:hover,
+.p2c-section-nav button:hover {
+  background: var(--hover);
+}
+.p2c-section-nav [aria-current] {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--selected-text);
+}
+.p2c-section-nav-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Menus (Menu.tsx): a raised list of actions under its button */
+.p2c-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 12rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
+}
+.p2c-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+.p2c-menu-item {
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.p2c-menu-item:hover:not(:disabled),
+.p2c-menu-item:focus-visible {
+  background: var(--hover);
+}
+/* The focus ring every control has, drawn inside so the list does not clip it. */
+.p2c-menu-item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.p2c-menu-item:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-menu-item-danger {
+  color: var(--danger-text);
+}
+.p2c-menu-item-divider {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+/* Switch (Field.tsx): an on/off setting as a toggle. The native checkbox
+   stays on top of the track, invisible, so clicks, Space and screen readers
+   reach it; the track shows its state: muted off, accent on. */
+.p2c-switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.p2c-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-label);
+  cursor: pointer;
+}
+.p2c-switch input {
+  position: absolute;
+  left: 0;
+  width: 2.25rem;
+  height: 1.25rem;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+.p2c-switch-track {
+  flex: none;
+  position: relative;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--sunken);
+  transition: background-color 0.15s;
+}
+.p2c-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.25rem - 6px);
+  height: calc(1.25rem - 6px);
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+.p2c-switch input:checked + .p2c-switch-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.p2c-switch input:checked + .p2c-switch-track .p2c-switch-thumb {
+  background: #ffffff;
+  transform: translateX(1rem);
+}
+.p2c-switch input:focus-visible + .p2c-switch-track {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.p2c-switch:has(input:disabled) {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.p2c-switch input:disabled + .p2c-switch-track {
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .p2c-switch-track,
+  .p2c-switch-thumb {
+    transition: none;
+  }
+}

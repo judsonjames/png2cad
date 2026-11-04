@@ -1,0 +1,32 @@
+{
+  "name": "@png2cad/web",
+  "private": true,
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p .",
+    "smoke": "playwright test"
+  },
+  "dependencies": {
+    "@png2cad/core": "*",
+    "@png2cad/formats": "*",
+    "@png2cad/ui": "*",
+    "fflate": "0.8.3",
+    "manifold-3d": "3.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.186.1",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.3.1"
+  }
+}

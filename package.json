@@ -1,0 +1,40 @@
+{
+  "name": "png2cad",
+  "private": true,
+  "license": "BSD-3-Clause",
+  "description": "Turn an image into clean DXF, SVG and 3MF files, entirely in the browser.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "workspaces": [
+    "packages/core",
+    "packages/formats",
+    "packages/ui",
+    "apps/web",
+    "apps/cli"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck:all && npm run lint && npm run format:check && npm run test",
+    "typecheck:all": "npm run typecheck --workspaces --if-present",
+    "smoke": "npm run smoke --workspace apps/web",
+    "audit": "node scripts/audit-publication.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.6",
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.12.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.1.0"
+  }
+}

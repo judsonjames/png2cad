@@ -1,0 +1,25 @@
+/* Local copies, so the app reads the same without a network:
+   Fira Sans for text and headings, Fira Code for code. SIL Open Font License 1.1
+   (the OFL files beside the fonts; the fonts also carry it in their metadata).
+   Import it through a bundler, which copies the font files next to the build. */
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./fonts/FiraSans-Regular.ttf) format("truetype");
+}
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(./fonts/FiraSans-SemiBold.ttf) format("truetype");
+}
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url(./fonts/FiraCode-Variable.ttf) format("truetype-variations");
+}

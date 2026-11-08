@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "test", "vite.config.ts", "playwright.config.ts", "playwright.webkit.config.ts"],
+  "include": ["src", "test", "vite.config.ts", "playwright.config.ts", "playwright.webkit.config.ts", "offline.ts"],
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
     "jsx": "react-jsx",

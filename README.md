@@ -19,6 +19,15 @@ Drop an image, set the output size, pick SVG, DXF or 3MF, then select Make.
 - **Crop** away anything that is not the art. A source about 400 pixels across or larger traces best
 - **3MF in Bambu Studio:** a plain 3MF opens with File > Import. To open plates with your printer and filaments set, choose Add Bambu Template and pick any project saved from Bambu Studio
 
+## On an iPad or phone
+
+It works on phones and tablets, upright or sideways. Art from Procreate and other drawing apps works well: share it as a PNG, then choose it in the app.
+
+- **Install it:** in Safari, Share, then Add to Home Screen. It opens full screen, and once opened it works without a connection
+- **Share** sends a finished file straight to Affinity, Files or another app. Download is still there
+- Very large images are read at up to 4096 x 4096 pixels, which is what phones and tablets can handle, and the app says when it does this
+- An update to the app arrives the next time you open it after closing it
+
 ## Development
 
 Needs Node 24.
@@ -28,6 +37,8 @@ npm install
 npm run dev
 npm run check
 ```
+
+The browser tests run in Edge by default. `npm run smoke:webkit --workspace apps/web` runs them in WebKit, the engine Safari uses, after `npx playwright install webkit`. The home screen icons are drawn from `public/favicon.svg` by `node scripts/icons.mjs` in `apps/web`.
 
 ```bash
 npm run build

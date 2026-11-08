@@ -622,6 +622,34 @@ export const useApp = create<State>((set, get) => {
   };
 });
 
+const TYPES: Record<string, string> = {
+  svg: "image/svg+xml",
+  dxf: "image/vnd.dxf",
+  "3mf": "model/3mf",
+  zip: "application/zip",
+};
+
+/** A file to hand to the share sheet, or null where the device cannot share it. */
+export function shareable(name: string, bytes: Uint8Array): File | null {
+  if (typeof navigator.canShare !== "function") return null;
+  const type = TYPES[name.slice(name.lastIndexOf(".") + 1).toLowerCase()] ?? "application/octet-stream";
+  const file = new File([bytes as BlobPart], name, { type });
+  return navigator.canShare({ files: [file] }) ? file : null;
+}
+
+/**
+ * The share sheet, which on an iPad sends the file straight to Affinity, Files or another app, where a download from a
+ * home screen app can be awkward. Closing the sheet is not a failure; anything else saves the file as a download.
+ */
+export async function share(file: File): Promise<void> {
+  try {
+    await navigator.share({ files: [file], title: file.name });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
+    download(file.name, new Uint8Array(await file.arrayBuffer()), file.type);
+  }
+}
+
 export function download(name: string, bytes: Uint8Array, type = "application/octet-stream"): void {
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
   const a = document.createElement("a");

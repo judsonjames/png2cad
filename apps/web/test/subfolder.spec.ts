@@ -17,6 +17,8 @@ const types: Record<string, string> = {
   ".wasm": "application/wasm",
   ".svg": "image/svg+xml",
   ".ttf": "font/ttf",
+  ".png": "image/png",
+  ".webmanifest": "application/manifest+json",
 };
 
 let server: Server;

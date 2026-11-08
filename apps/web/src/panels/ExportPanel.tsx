@@ -1,6 +1,6 @@
 import type { Finding } from "@png2cad/formats";
 import { Banner, Button, CheckList, Progress, Section, Verdict, type CheckItem } from "@png2cad/ui/components";
-import { download, useApp, zipFiles } from "../store";
+import { download, share, shareable, useApp, zipFiles } from "../store";
 
 const STATE = { pass: "pass", warning: "warn", fault: "fail" } as const;
 
@@ -68,9 +68,21 @@ export function ExportPanel() {
                   <span className="app-file-name">{f.name}</span>
                   <span className="app-file-size">{`${f.sizeText}, ${sizeOf(f.bytes.length)}`}</span>
                 </span>
-                <Button aria-label={`Download ${f.name}`} onClick={() => download(f.name, f.bytes)}>
-                  Download
-                </Button>
+                <span className="app-file-actions">
+                  {(() => {
+                    const file = shareable(f.name, f.bytes);
+                    return (
+                      file && (
+                        <Button aria-label={`Share ${f.name}`} onClick={() => void share(file)}>
+                          Share
+                        </Button>
+                      )
+                    );
+                  })()}
+                  <Button aria-label={`Download ${f.name}`} onClick={() => download(f.name, f.bytes)}>
+                    Download
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>

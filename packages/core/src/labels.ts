@@ -44,6 +44,10 @@ export interface TraceOptions {
    * background is dropped. Otherwise white parts of a logo on white are cut out and a plate falls into loose pieces.
    */
   keepEnclosed?: boolean;
+  /** How strongly thin lines are lifted before the cut between colors. 0 is off. Defaults to 1 for mask mode only. */
+  sharpen?: number;
+  /** Told how far the trace has come, from 0 to 1. */
+  onProgress?: (done: number) => void;
 }
 
 // Files use a 0.0127 mm grid wherever this budget allows. Coarser grids made the nozzle fit unstable on real line art:
@@ -161,6 +165,27 @@ export function removeSpecks(lab: Uint8Array, w: number, h: number, minCells: nu
   return any ? reassign(lab, w, h, bad) : lab;
 }
 
+/**
+ * Final smoothing, in source pixels. Measured in cells it did less the finer the grid, so the finest files kept the
+ * pixel steps of the source as wobble. At 0.6 the strokes of small lettering start to run together.
+ */
+const SMOOTH_PIXELS = 0.45;
+
+/**
+ * A line one pixel wide is only partly covered, so it sits near the middle of the range and a cut there breaks it up.
+ * Sharpening lifts it clear. The straight edge of a thick shape stays where it was, since it crosses the middle either
+ * way. Done at source size, where it costs almost nothing. Off for colors mode: there it strengthens the blended pixels
+ * between two colors, and a fringe of a third color grows along the edges.
+ */
+function sharpened(src: Float32Array, w: number, h: number, a: TraceOptions): Float32Array {
+  const amount = a.sharpen ?? (a.mode === "mask" ? 1 : 0);
+  if (amount <= 0) return src;
+  const soft = gaussianBlur(src, w, h, 1);
+  const out = new Float32Array(src.length);
+  for (let i = 0; i < out.length; i++) out[i] = src[i] + amount * (src[i] - soft[i]);
+  return out;
+}
+
 function traceMask(img: RasterImage, a: TraceOptions): LabelMap {
   const { width: w, height: h } = img;
   const bg = a.background ?? medianColor(borderPixels(img));
@@ -196,11 +221,13 @@ function traceMask(img: RasterImage, a: TraceOptions): LabelMap {
   const grid = planGrid(cw, ch, a);
   // Enlarge, then blur. The order matters: a blur of a third of a pixel does almost nothing at source resolution, so
   // the pixel staircase survives, and the nozzle fit then treats every step as detail to repair.
-  const enlarged = resizeCubic(cropFloat(f, w, box), cw, ch, grid.width, grid.height);
+  const enlarged = resizeCubic(sharpened(cropFloat(f, w, box), cw, ch, a), cw, ch, grid.width, grid.height);
+  a.onProgress?.(0.4);
   const big = gaussianBlur(enlarged, grid.width, grid.height, 0.35 * grid.cellsPerSrc);
+  a.onProgress?.(0.7);
   const hard = new Float32Array(big.length);
   for (let i = 0; i < big.length; i++) hard[i] = big[i] > 0.5 ? 1 : 0;
-  const smooth = gaussianBlur(hard, grid.width, grid.height, 1.5);
+  const smooth = gaussianBlur(hard, grid.width, grid.height, Math.max(1.5, SMOOTH_PIXELS * grid.cellsPerSrc));
   const lab = new Uint8Array(big.length);
   for (let i = 0; i < lab.length; i++) lab[i] = smooth[i] > 0.5 ? 1 : 0;
   const speck = ((a.speckMm ?? 0.15) / grid.cellMm) ** 2;
@@ -264,6 +291,49 @@ export function findPalette(img: RasterImage, count: number): Rgb[] {
   return centers.map(roundColor);
 }
 
+interface PalettePair {
+  a: number;
+  b: number;
+  from: Rgb;
+  along: Rgb;
+  len2: number;
+}
+
+/** Every pair of palette colors, closest first, so a blend goes to the nearest pair that explains it. */
+function palettePairs(pal: Rgb[]): PalettePair[] {
+  const pairs: PalettePair[] = [];
+  for (let a = 0; a < pal.length; a++) {
+    for (let b = a + 1; b < pal.length; b++) {
+      const along: Rgb = [pal[b][0] - pal[a][0], pal[b][1] - pal[a][1], pal[b][2] - pal[a][2]];
+      pairs.push({ a, b, from: pal[a], along, len2: along[0] ** 2 + along[1] ** 2 + along[2] ** 2 });
+    }
+  }
+  return pairs.sort((p, q) => p.len2 - q.len2);
+}
+
+/**
+ * The two palette colors this pixel is a blend of, if any, and how far it sits from a to b. An edge pixel between two
+ * colors can be nearer a third: halfway from navy to white is nearer red than either, which grew a red fringe along
+ * navy letters. It has to fit the blend far better than it fits the nearest color, so a real palette color stays itself.
+ */
+function blendOf(c: Rgb, pairs: PalettePair[], least: number): { a: number; b: number; t: number } | null {
+  let best = 0.25 * least;
+  let found: { a: number; b: number; t: number } | null = null;
+  for (const p of pairs) {
+    const dx = c[0] - p.from[0];
+    const dy = c[1] - p.from[1];
+    const dz = c[2] - p.from[2];
+    const t = (dx * p.along[0] + dy * p.along[1] + dz * p.along[2]) / p.len2;
+    if (t <= 0 || t >= 1) continue;
+    const off = (dx - t * p.along[0]) ** 2 + (dy - t * p.along[1]) ** 2 + (dz - t * p.along[2]) ** 2;
+    if (off < best) {
+      best = off;
+      found = { a: p.a, b: p.b, t };
+    }
+  }
+  return found;
+}
+
 function traceColors(img: RasterImage, a: TraceOptions): LabelMap {
   const { width: w, height: h } = img;
   const given = a.palette ?? findPalette(img, a.colorCount ?? 3);
@@ -297,12 +367,21 @@ function traceColors(img: RasterImage, a: TraceOptions): LabelMap {
   const weights = pal.map(() => new Float32Array(w * h));
   const fg = new Uint8Array(w * h);
   const d2 = new Float64Array(pal.length);
+  const pairs = palettePairs(pal);
   for (let i = 0; i < w * h; i++) {
     const c = rgbAt(img, i);
     let least = Infinity;
     for (let k = 0; k < pal.length; k++) {
       d2[k] = dist2(c, pal[k]);
       if (d2[k] < least) least = d2[k];
+    }
+    const mix = blendOf(c, pairs, least);
+    if (mix) {
+      for (let k = 0; k < pal.length; k++) weights[k][i] = 0;
+      weights[mix.a][i] = 1 - mix.t;
+      weights[mix.b][i] = mix.t;
+      fg[i] = weights[0][i] < 0.5 ? 1 : 0;
+      continue;
     }
     let total = 0;
     for (let k = 0; k < pal.length; k++) {
@@ -322,7 +401,7 @@ function traceColors(img: RasterImage, a: TraceOptions): LabelMap {
   const lab = new Uint8Array(size);
   for (let k = 0; k < pal.length; k++) {
     // Keep the highest weight one class at a time, so only two full-size maps are ever held.
-    const enlarged = resizeCubic(cropFloat(weights[k], w, box), cw, ch, grid.width, grid.height);
+    const enlarged = resizeCubic(sharpened(cropFloat(weights[k], w, box), cw, ch, a), cw, ch, grid.width, grid.height);
     const big = gaussianBlur(enlarged, grid.width, grid.height, 0.35 * grid.cellsPerSrc);
     for (let i = 0; i < size; i++) {
       if (big[i] > best[i]) {
@@ -330,6 +409,7 @@ function traceColors(img: RasterImage, a: TraceOptions): LabelMap {
         lab[i] = k;
       }
     }
+    a.onProgress?.((0.9 * (k + 1)) / pal.length);
   }
   const speck = ((a.speckMm ?? 0.15) / grid.cellMm) ** 2;
   const map: LabelMap = {

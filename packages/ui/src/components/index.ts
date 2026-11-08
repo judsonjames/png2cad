@@ -28,5 +28,5 @@ export { Disclosure, Section, type SectionProps } from "./Section";
 export { TabPanel, Tabs, type TabItem } from "./Tabs";
 export { InfoTip, Tip } from "./Tooltip";
 export { CheckList, CheckRow, Verdict, type CheckItem, type CheckState } from "./Verdict";
-export { Fit, Pane, Workspace } from "./Workspace";
+export { Fit, Pane, useMediaQuery, Workspace } from "./Workspace";
 export { LogoMark } from "./LogoMark";

@@ -338,3 +338,134 @@ describe("lengths", () => {
     expect(parseLength("x")).toBeNull();
   });
 });
+
+describe("fit progress", () => {
+  const art = labelMap(600, 200, (x, y) =>
+    Math.abs(y - 100 - 20 * Math.sin(x / 50)) < 4 && x > 40 && x < 560 ? 1 : 0,
+  );
+
+  it("only moves forward, says what it is doing, and changes nothing in the result", () => {
+    const steps: [string, number][] = [];
+    const told = fitToNozzle(art, { nozzleMm: 0.4 }, { widthMm: 14 }, (message, done) => steps.push([message, done]));
+    const quiet = fitToNozzle(art, { nozzleMm: 0.4 }, { widthMm: 14 });
+    expect(new Set(steps.map((s) => s[0].replace(" again", ""))).size).toBeGreaterThanOrEqual(4);
+    for (let i = 1; i < steps.length; i++) expect(steps[i][1]).toBeGreaterThanOrEqual(steps[i - 1][1]);
+    expect(steps[steps.length - 1][1]).toBeGreaterThan(0.5);
+    expect(steps[steps.length - 1][1]).toBeLessThanOrEqual(1);
+    expect(told.map.data).toEqual(quiet.map.data);
+  });
+
+  it("reports through a trace", () => {
+    const pixels = new Uint8ClampedArray(64 * 64 * 4);
+    for (let i = 0; i < 64 * 64; i++) {
+      const on = i % 64 > 20 && i % 64 < 44 && i >> 6 > 20 && i >> 6 < 44;
+      pixels.set(on ? [0, 0, 0, 255] : [255, 255, 255, 255], i * 4);
+    }
+    const seen: number[] = [];
+    traceImage({ data: pixels, width: 64, height: 64 }, { mode: "mask", widthMm: 20, onProgress: (d) => seen.push(d) });
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(seen).toEqual([...seen].sort((a, b) => a - b));
+  });
+});
+
+describe("faint thin lines", () => {
+  /** A ring one pixel wide and partly covered, as in a small emblem saved at low resolution. */
+  function faintRing() {
+    const size = 60;
+    const data = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const edge = Math.abs(Math.hypot(x - 30, y - 30) - 12);
+        const v = Math.round(255 * 0.8 * Math.max(0, 1 - edge));
+        data.set([v, v, v, 255], (y * size + x) * 4);
+      }
+    }
+    // Something solid beside it, so the art's brightest color is white as in real line art.
+    for (let y = 5; y < 15; y++) for (let x = 5; x < 15; x++) data.set([255, 255, 255, 255], (y * size + x) * 4);
+    return { data, width: size, height: size };
+  }
+  const holes = (map: LabelMap) => {
+    const clear = Uint8Array.from(map.data, (v) => (v ? 0 : 1));
+    return regionsOf(clear, map.width, map.height).count;
+  };
+
+  it("keeps a faint ring closed, where a plain cut breaks it", () => {
+    const options = {
+      mode: "mask" as const,
+      widthMm: 30,
+      background: [0, 0, 0] as Rgb,
+      foreground: [255, 255, 255] as Rgb,
+      speckMm: 0.05,
+    };
+    expect(holes(traceImage(faintRing(), { ...options, sharpen: 0 }))).toBe(1);
+    expect(holes(traceImage(faintRing(), options))).toBe(2);
+  });
+});
+
+describe("blended edge pixels", () => {
+  const white: Rgb = [253, 253, 253];
+  const navy: Rgb = [2, 19, 50];
+  const red: Rgb = [180, 21, 27];
+  const gray: Rgb = [128, 128, 128];
+
+  /** A soft-edged navy disc on white, with a red block well away from it. */
+  function disc(palette: Rgb[], middle: Rgb) {
+    const size = 80;
+    const data = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const t = Math.min(Math.max(Math.hypot(x - 30, y - 40) - 18, 0), 1.6) / 1.6;
+        const c = [0, 1, 2].map((k) => navy[k] + t * (white[k] - navy[k]));
+        data.set([...c, 255], (y * size + x) * 4);
+        if (x > 62 && x < 76 && y > 30 && y < 50) data.set([...middle, 255], (y * size + x) * 4);
+      }
+    }
+    return traceImage({ data, width: size, height: size }, { mode: "colors", palette, widthMm: 40, speckMm: 0.02 });
+  }
+
+  it("never turns the edge between two colors into a third", () => {
+    const map = disc([white, navy, red], red);
+    const third = 2;
+    const cut = Math.round(map.width * 0.7); // Left of here is only the disc and its edge.
+    let fringe = 0;
+    for (let y = 0; y < map.height; y++) {
+      for (let x = 0; x < cut; x++) if (map.data[y * map.width + x] === third) fringe++;
+    }
+    expect(fringe).toBe(0);
+    expect(map.data.includes(third)).toBe(true);
+  });
+
+  it("keeps a real color that sits between two others", () => {
+    const map = disc([white, navy, gray], gray);
+    let kept = 0;
+    for (const v of map.data) if (v === 2) kept++;
+    expect(kept / map.data.length).toBeGreaterThan(0.02);
+  });
+});
+
+describe("clean edges", () => {
+  it("evens out a ragged line", () => {
+    const random = rng(7);
+    const wobble = Array.from({ length: 200 }, () => 6 * (random() - 0.5));
+    const line = labelMap(900, 200, (x, y) => {
+      const c = 100 + wobble[Math.floor(x / 6)];
+      return Math.abs(y - c) < 5 && x > 40 && x < 860 ? 1 : 0;
+    });
+    const { map } = fitToNozzle(line, { nozzleMm: 0.4 });
+    let travel = 0;
+    let last = -1;
+    for (let x = Math.round(map.width * 0.2); x < map.width * 0.8; x++) {
+      let top = 0;
+      while (top < map.height && !map.data[top * map.width + x]) top++;
+      if (last >= 0) travel += Math.abs(top - last);
+      last = top;
+    }
+    expect(travel).toBeLessThan(60); // 96 with a light blur
+  });
+
+  it("leaves no cell steps along a nearly straight edge on a coarse grid", () => {
+    const coarse = labelMap(1000, 120, (x, y) => (Math.abs(y - 60 - x / 40) < 20 && x > 20 && x < 980 ? 1 : 0));
+    const curves = chainsToCurves(boundaryChains(coarse), 0.0127, coarse.cellMm);
+    expect(curves.reduce((n, c) => n + c.points.length, 0)).toBeLessThan(20); // 108 when each step survived
+  });
+});

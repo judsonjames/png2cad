@@ -1,9 +1,12 @@
-import { boundaryChains, fitChains, type LabelMap } from "@png2cad/core";
+import { boundaryChains, fitChains, type Cubic, type LabelMap, type Point } from "@png2cad/core";
 import { strFromU8, unzipSync } from "fflate";
 import Module, { type ManifoldToplevel } from "manifold-3d";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildParts,
+  fitAtSize,
+  LINE_FIT,
+  outlineSvg,
   projectFromTemplate,
   readBambuTemplate,
   readDxf,
@@ -11,6 +14,7 @@ import {
   verifyDxf,
   verifySvg,
   verifyThreeMf,
+  writeSvg,
   writeThreeMf,
   type BambuTemplate,
   type JobRequest,
@@ -129,8 +133,8 @@ describe("size", () => {
   it("states each file's real size, in that file's units", () => {
     const pick = (units: "mm" | "in") =>
       runJob(badge(), job(units), wasm).files.find((f) => f.kind === "dxf")?.sizeText;
-    expect(pick("mm")).toMatch(/^25\.0 x [\d.]+ mm$/);
-    expect(pick("in")).toMatch(/^0\.98 x [\d.]+ in$/);
+    expect(pick("mm")).toMatch(/^25\.0 x [\d.]+ mm \(0\.98 x [\d.]+ in\)$/);
+    expect(pick("in")).toMatch(/^0\.98 x [\d.]+ in \(25\.0 x [\d.]+ mm\)$/);
   });
 
   it("a height can set the size", () => {
@@ -229,6 +233,142 @@ describe("verifiers catch damage", () => {
     const parts = buildParts(wasm, badge(), boundaryChains(badge()));
     parts[0].triangles = parts[0].triangles.slice(3);
     expect(verifyThreeMf(writeThreeMf(parts)).findings.some((f) => f.code === "3mf.watertight")).toBe(true);
+  });
+});
+
+describe("SVG page", () => {
+  /** A circle whose curves join at 45 degrees, so no end point sits at its left, right, top or bottom. */
+  function circle(r: number): Cubic[] {
+    const k = (4 / 3) * Math.tan(Math.PI / 8) * r;
+    const at = (a: number): Point => [r * Math.cos(a), r * Math.sin(a)];
+    const out: Cubic[] = [];
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 4 + (i * Math.PI) / 2;
+      const b = a + Math.PI / 2;
+      const [p, q] = [at(a), at(b)];
+      out.push([
+        p,
+        [p[0] - k * Math.sin(a), p[1] + k * Math.cos(a)],
+        [q[0] + k * Math.sin(b), q[1] - k * Math.cos(b)],
+        q,
+      ]);
+    }
+    return out;
+  }
+  const page = () =>
+    writeSvg([{ name: "disc", color: [0, 0, 0], areas: [{ outer: circle(10), holes: [] }] }], { widthMm: 40 });
+
+  it("holds the whole curve, not just its end points", () => {
+    const svg = page();
+    expect(svg.widthMm).toBeCloseTo(40, 3);
+    expect(svg.heightMm).toBeCloseTo(40, 3);
+    expect(verifySvg(svg.text, 40).filter((f) => f.severity === "fault")).toEqual([]);
+  });
+
+  it("fails a file whose art runs past the page", () => {
+    const small = page().text.replace(
+      /width="[\d.]+mm" height="[\d.]+mm" viewBox="0 0 [\d.]+ [\d.]+"/,
+      'width="36mm" height="36mm" viewBox="0 0 36 36"',
+    );
+    expect(verifySvg(small).map((f) => f.code)).toContain("svg.page");
+    expect(verifySvg(small).find((f) => f.code === "svg.page")?.severity).toBe("fault");
+  });
+});
+
+describe("SVG units", () => {
+  const box = { title: "b", widthMm: 127, nozzles: [] } as unknown as JobRequest;
+
+  it("states its size in inches when asked, and still checks out at the same real size", () => {
+    const job = runJob(badge(), { ...box, svg: { source: "art", units: "in" } } as JobRequest, null);
+    const svg = job.files[0];
+    const text = strFromU8(svg.bytes);
+    expect(text).toMatch(/<svg[^>]* width="5in" height="[\d.]+in"/);
+    expect(svg.sizeText).toMatch(/^5\.00 x [\d.]+ in \(127\.0 x [\d.]+ mm\)$/);
+    expect(verifySvg(text, 127).filter((f) => f.severity === "fault")).toEqual([]);
+  });
+
+  it("stays in millimeters by default, and shows inches beside them", () => {
+    const job = runJob(badge(), { ...box, svg: { source: "art" } } as JobRequest, null);
+    expect(strFromU8(job.files[0].bytes)).toMatch(/<svg[^>]* width="127(\.0+)?mm"/);
+    expect(job.files[0].sizeText).toMatch(/^127\.0 x [\d.]+ mm \(5\.00 x [\d.]+ in\)$/);
+  });
+
+  it("fails an SVG whose stated inches disagree with its page", () => {
+    const text = strFromU8(
+      runJob(badge(), { ...box, svg: { source: "art", units: "in" } } as JobRequest, null).files[0].bytes,
+    );
+    const wrong = text.replace('width="5in"', 'width="4in"');
+    expect(verifySvg(wrong).map((f) => f.code)).toContain("svg.viewbox");
+  });
+});
+
+describe("smallest line", () => {
+  /** A hairline beside a solid block. */
+  function hairline(): LabelMap {
+    const w = 600;
+    const h = 200;
+    const data = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (x > 20 && x < 580 && Math.abs(y - 60) < 2) data[y * w + x] = 1;
+        if (x > 200 && x < 400 && y > 110 && y < 180) data[y * w + x] = 1;
+      }
+    }
+    return {
+      data,
+      width: w,
+      height: h,
+      cellMm: 0.05,
+      names: ["background", "ink"],
+      colors: [
+        [255, 255, 255],
+        [0, 0, 0],
+      ],
+    };
+  }
+
+  it("thickens thin lines in the SVG, and only for this file", () => {
+    const job = runJob(
+      hairline(),
+      { title: "h", widthMm: 28, nozzles: [], svg: { source: "line", lineMm: 0.5 } } as JobRequest,
+      null,
+    );
+    expect(job.files.map((f) => f.name)).toEqual(["h_line0.5.svg"]);
+    expect(job.findings.filter((f) => f.severity === "fault")).toEqual([]);
+    expect(job.findings.some((f) => f.message.startsWith("0.5 mm lines: every line"))).toBe(true);
+    const fitted = fitAtSize(hairline(), 0.5, LINE_FIT, { widthMm: 28 });
+    const m = fitted.map;
+    let thinnest = Infinity;
+    for (let x = Math.round(m.width * 0.2); x < m.width * 0.8; x += 10) {
+      let run = 0;
+      for (let y = 0; y < m.height / 2; y++) if (m.data[y * m.width + x]) run++;
+      thinnest = Math.min(thinnest, run);
+    }
+    expect(thinnest * m.cellMm).toBeGreaterThan(0.45);
+  });
+});
+
+describe("export preview", () => {
+  it("draws the same points as the DXF, at the same size", () => {
+    const map = badge();
+    const box = { widthMm: 60 };
+    const job = runJob(
+      map,
+      { title: "badge", ...box, nozzles: [0.4], dxf: { units: "mm", perColor: false } } as JobRequest,
+      null,
+    );
+    const dxf = job.files.find((f) => f.kind === "dxf");
+    const curves = readDxf(strFromU8(dxf?.bytes as Uint8Array));
+    const outline = outlineSvg(fitAtSize(map, 0.4, undefined, box).map);
+    expect(outline.widthMm).toBeCloseTo(Math.max(...curves.flatMap((c) => c.points.map((p) => p[0]))), 3);
+    const flipped = curves.flatMap((c) => c.points.map(([x, y]) => [x, outline.heightMm - y]));
+    const shown = [...outline.text.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    expect(shown.length).toBeGreaterThan(20);
+    // Both ways: a shared edge is drawn once per color, so the counts differ but the points do not.
+    const gap = (from: number[][], to: number[][]) =>
+      Math.max(...from.map(([x, y]) => Math.min(...to.map(([a, b]) => Math.hypot(a - x, b - y)))));
+    expect(gap(shown, flipped)).toBeLessThan(0.0005);
+    expect(gap(flipped, shown)).toBeLessThan(0.0005);
   });
 });
 

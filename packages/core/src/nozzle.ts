@@ -34,6 +34,9 @@ export interface FitOptions {
   thinFeatures?: "widen" | "remove";
 }
 
+/** Told what the fit is doing and how far it has come, from 0 to 1. */
+export type FitProgress = (message: string, done: number) => void;
+
 export interface SpotReport {
   count: number;
   areaMm2: number;
@@ -231,7 +234,15 @@ function closeGaps(lab: Uint8Array, w: number, h: number, widthCells: number): U
   return reassign(lab, w, h, fill);
 }
 
-/** Light blur per label and re-pick, to round off ragged steps the fixes leave behind. */
+/**
+ * Blur strength in line widths. A straight line keeps its width at this strength, while lumps and wobble shorter than
+ * about two line widths go. At 0.12 the truck kept visible knobs along its lines at 100 mm with a 0.4 mm nozzle. At 0.3
+ * the blur fills the inner corners where lines cross enough to make the crossings blobs of their own.
+ */
+const SMOOTH_WIDTHS = 0.25;
+const SMOOTH_PASSES = 2;
+
+/** Blur per label and re-pick, to round off the ragged steps and lumps the fixes leave behind. */
 function smoothLabels(lab: Uint8Array, w: number, h: number, sigma: number, labels: number[]): Uint8Array {
   if (sigma < 0.5) return lab;
   const radius = Math.ceil(sigma * 3);
@@ -298,7 +309,11 @@ function settle(
   return out;
 }
 
-function fitOnce(map: LabelMap, o: Required<FitOptions>): { map: LabelMap; report: FitReport } {
+function fitOnce(
+  map: LabelMap,
+  o: Required<FitOptions>,
+  onProgress: FitProgress,
+): { map: LabelMap; report: FitReport } {
   const { width: w0, height: h0, cellMm: g } = map;
   const wf = (o.featureFactor * o.nozzleMm) / g;
   const wg = (o.gapFactor * o.nozzleMm) / g;
@@ -317,9 +332,18 @@ function fitOnce(map: LabelMap, o: Required<FitOptions>): { map: LabelMap; repor
       if (t.some((x) => x)) out = widen(out, w, h, 0, t, wg);
     }
   }
+  // Shares of the time measured on the truck at 100 mm and 127 mm: 36% widening, 52% smoothing, 12% measuring.
+  onProgress("Widening thin lines", 0);
   out = settle(out, w, h, labels, wf, wg, o.thinFeatures);
-  out = smoothLabels(out, w, h, 0.12 * Math.min(wf, wg), labels);
-  out = settle(out, w, h, labels, wf, wg, o.thinFeatures);
+  // Settling widens what the blur thinned, which leaves small knobs, so the blur runs again over those.
+  const share = 0.52 / SMOOTH_PASSES;
+  for (let pass = 0; pass < SMOOTH_PASSES; pass++) {
+    onProgress("Smoothing edges", 0.36 + pass * share);
+    out = smoothLabels(out, w, h, SMOOTH_WIDTHS * Math.min(wf, wg), labels);
+    onProgress("Rechecking lines", 0.36 + (pass + 0.54) * share);
+    out = settle(out, w, h, labels, wf, wg, o.thinFeatures);
+  }
+  onProgress("Measuring the result", 0.88);
   let art = 0;
   let moved = 0;
   for (let i = 0; i < out.length; i++) {
@@ -384,6 +408,7 @@ export function fitToNozzle(
   source: LabelMap,
   options: FitOptions,
   box: FitBox = {},
+  onProgress?: FitProgress,
 ): { map: LabelMap; report: FitReport } {
   const o: Required<FitOptions> = {
     featureFactor: 1.05,
@@ -401,7 +426,11 @@ export function fitToNozzle(
   if (box.heightMm) fits.push(box.heightMm / curH);
   let scale = fits.length ? Math.min(...fits) : 1;
   let result!: ReturnType<typeof fitOnce>;
+  // A refit cannot be known in advance, so each one takes part of what is left and the bar never runs backward.
+  let reached = 0;
   for (let t = 0; t < 5; t++) {
+    const from = reached;
+    const room = t === 0 ? 0.85 : 0.6 * (1 - reached);
     const work =
       Math.abs(scale - 1) < 1e-6
         ? src
@@ -417,7 +446,11 @@ export function fitToNozzle(
             width: Math.round(src.width * scale),
             height: Math.round(src.height * scale),
           };
-    result = fitOnce(work, o);
+    result = fitOnce(work, o, (message, part) => {
+      reached = from + room * part;
+      onProgress?.(t === 0 ? message : `${message} again`, reached);
+    });
+    reached = from + room;
     const over = Math.max(
       box.widthMm ? result.report.widthMm / box.widthMm : 0,
       box.heightMm ? result.report.heightMm / box.heightMm : 0,

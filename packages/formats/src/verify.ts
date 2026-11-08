@@ -163,14 +163,22 @@ function parsePath(d: string): SvgPath["subpaths"] {
 /** Structure, closed paths, size and crossings. Sizes in millimeters. */
 export function verifySvg(text: string, maxWidth?: number, maxHeight?: number): Finding[] {
   const out: Finding[] = [];
-  const size = /<svg[^>]*\swidth="([\d.]+)mm"[^>]*\sheight="([\d.]+)mm"[^>]*\sviewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(
-    text,
-  );
-  if (!size) out.push(fault("svg.size", "The SVG does not state its size in millimeters."));
-  else if (Math.abs(Number(size[1]) - Number(size[3])) > 1e-3 || Math.abs(Number(size[2]) - Number(size[4])) > 1e-3) {
-    out.push(fault("svg.viewbox", "The viewBox does not match the size."));
-  } else {
-    out.push(sizeFinding("svg", "SVG", Number(size[1]), Number(size[2]), " mm", maxWidth, maxHeight));
+  const size =
+    /<svg[^>]*\swidth="([\d.]+)(mm|in)"[^>]*\sheight="([\d.]+)(mm|in)"[^>]*\sviewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(
+      text,
+    );
+  const inMm = (value: string, unit: string) => Number(value) * (unit === "in" ? 25.4 : 1);
+  const pageW = size ? Number(size[5]) : 0;
+  const pageH = size ? Number(size[6]) : 0;
+  if (!size) out.push(fault("svg.size", "The SVG does not state its size in millimeters or inches."));
+  else {
+    const w = inMm(size[1], size[2]);
+    const h = inMm(size[3], size[4]);
+    if (Math.abs(w - pageW) > 1e-3 || Math.abs(h - pageH) > 1e-3) {
+      out.push(fault("svg.viewbox", "The viewBox does not match the size."));
+    } else {
+      out.push(sizeFinding("svg", "SVG", w, h, " mm", maxWidth, maxHeight));
+    }
   }
   if (/<(image|text|style|use|defs)\b|\s(stroke|style|transform|class)=/.test(text)) {
     out.push(fault("svg.plain", "The SVG holds something other than filled paths."));
@@ -182,11 +190,17 @@ export function verifySvg(text: string, maxWidth?: number, maxHeight?: number): 
   const curves: Curve[] = [];
   const seen = new Set<string>();
   let open = 0;
+  let past = 0;
   for (const g of groups) {
     for (const m of g[3].matchAll(/<path d="([^"]+)"/g)) {
       for (const sub of parsePath(m[1])) {
         if (!sub.closed) open++;
         const pts = sub.points;
+        if (size) {
+          for (const p of pts) {
+            past = Math.max(past, -p[0], -p[1], p[0] - pageW, p[1] - pageH);
+          }
+        }
         for (let i = 0; i < pts.length; i++) {
           const a = pts[i];
           const b = pts[(i + 1) % pts.length];
@@ -202,6 +216,11 @@ export function verifySvg(text: string, maxWidth?: number, maxHeight?: number): 
     }
   }
   out.push(open ? fault("svg.open", `${open} open paths.`) : pass("svg.open", "All paths closed"));
+  out.push(
+    past > 0.005
+      ? fault("svg.page", `The art runs ${past.toFixed(3)} mm past the edge of the page, so it would be cut off.`)
+      : pass("svg.page", "All art is inside the page"),
+  );
   // A crossing means lines that pass 0.001 mm beyond each other; anything shallower is rounding at a shared point.
   const deep = findCrossings(curves, 1e-9).filter((h) => {
     const s = curves[h.a].points;

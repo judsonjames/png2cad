@@ -3,7 +3,7 @@
  * open as layers), one path per connected area with its holes cut out. The background is left out, so it stays
  * transparent. Only plain attributes are used, so Affinity, Illustrator and browsers read it the same way.
  */
-import { isStraight, type Area, type Cubic, type Point } from "@png2cad/core";
+import { MM_PER_INCH, isStraight, type Area, type Cubic, type Point } from "@png2cad/core";
 
 export interface SvgOptions {
   title?: string;
@@ -12,6 +12,8 @@ export interface SvgOptions {
   /** Art size in millimeters. Without it the art keeps its traced size. */
   widthMm?: number;
   heightMm?: number;
+  /** The unit the file states its size in, so a design program opens it that way. Coordinates stay in millimeters. */
+  units?: "mm" | "in";
   straightTolMm?: number;
 }
 
@@ -52,6 +54,29 @@ export function hexColor(c: readonly number[]): string {
 }
 
 /** Colors and their areas to SVG text. Art fills the box exactly, without distortion. */
+/**
+ * How far a curve reaches along one axis: its ends and wherever it turns back. A curve can bulge past both its end
+ * points, so sizing the page from end points alone cut the sides off a circle.
+ */
+function reach(b: Cubic, axis: 0 | 1): number[] {
+  const [p0, p1, p2, p3] = [b[0][axis], b[1][axis], b[2][axis], b[3][axis]];
+  const first = p1 - p0;
+  const half = p2 - p1 - first;
+  const a = p3 - p2 - 2 * (p2 - p1) + first;
+  const turns: number[] = [];
+  if (Math.abs(a) < 1e-12) {
+    if (Math.abs(half) > 1e-12) turns.push(-first / (2 * half));
+  } else if (half * half >= a * first) {
+    const root = Math.sqrt(half * half - a * first);
+    turns.push((-half + root) / a, (-half - root) / a);
+  }
+  const at = (t: number) => {
+    const u = 1 - t;
+    return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+  };
+  return [p0, p3, ...turns.filter((t) => t > 0 && t < 1).map(at)];
+}
+
 export function writeSvg(colors: SvgColor[], o: SvgOptions = {}): SvgResult {
   let loX = Infinity;
   let loY = Infinity;
@@ -60,12 +85,12 @@ export function writeSvg(colors: SvgColor[], o: SvgOptions = {}): SvgResult {
   for (const c of colors) {
     for (const a of c.areas) {
       for (const b of a.outer) {
-        for (const p of [b[0], b[3]]) {
-          loX = Math.min(loX, p[0]);
-          loY = Math.min(loY, p[1]);
-          hiX = Math.max(hiX, p[0]);
-          hiY = Math.max(hiY, p[1]);
-        }
+        const xs = reach(b, 0);
+        const ys = reach(b, 1);
+        loX = Math.min(loX, ...xs);
+        hiX = Math.max(hiX, ...xs);
+        loY = Math.min(loY, ...ys);
+        hiY = Math.max(hiY, ...ys);
       }
     }
   }
@@ -91,9 +116,10 @@ export function writeSvg(colors: SvgColor[], o: SvgOptions = {}): SvgResult {
 
   const ws = num(w);
   const hs = num(h);
+  const stated = (mm: number) => (o.units === "in" ? `${Number((mm / MM_PER_INCH).toFixed(5))}in` : `${num(mm)}mm`);
   const lines = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${ws}mm" height="${hs}mm" viewBox="0 0 ${ws} ${hs}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${stated(w)}" height="${stated(h)}" viewBox="0 0 ${ws} ${hs}">`,
     `  <title>${escapeXml(o.title ?? "artwork")}</title>`,
   ];
   if (o.backdrop) lines.push(`  <rect id="backdrop" width="${ws}" height="${hs}" fill="${escapeXml(o.backdrop)}"/>`);

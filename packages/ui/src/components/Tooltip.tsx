@@ -67,6 +67,9 @@ function useTip() {
  */
 export function InfoTip({ text, label = "More information" }: { text: ReactNode; label?: string }) {
   const { id, setAnchor, show, hide, toggle, bubble } = useTip();
+  // A tap also sends a pointer-enter and a focus before its click. Left to open the tip, they would let the click
+  // shut it again at once, so on touch only the click counts.
+  const touched = useRef(false);
   return (
     <>
       {/* A span, not a button: a disabled fieldset would disable a button, and
@@ -78,9 +81,14 @@ export function InfoTip({ text, label = "More information" }: { text: ReactNode;
         className="p2c-tip-marker"
         aria-label={label}
         aria-describedby={id}
-        onMouseEnter={show}
-        onMouseLeave={hide}
-        onFocus={show}
+        onPointerDown={(e) => {
+          touched.current = e.pointerType !== "mouse";
+        }}
+        onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+        onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
+        onFocus={() => {
+          if (!touched.current) show();
+        }}
         onBlur={hide}
         onClick={toggle}
         onKeyDown={(e) => {
@@ -104,8 +112,8 @@ export function Tip({ text, children }: { text: ReactNode; children: ReactElemen
     <span
       ref={setAnchor}
       className="p2c-tip-anchor"
-      onMouseEnter={show}
-      onMouseLeave={hide}
+      onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
       onFocus={show}
       onBlur={hide}
     >

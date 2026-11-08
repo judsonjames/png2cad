@@ -3,7 +3,7 @@ import type { WorkerRequest, WorkerResponse } from "./protocol";
 
 export class Cancelled extends Error {}
 
-type Lane = "preview" | "export";
+type Lane = "preview" | "fit" | "export";
 
 interface Running {
   worker: Worker;

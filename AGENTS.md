@@ -22,7 +22,7 @@ png2cad turns an image into clean SVG, DXF and 3MF files. Project context lives 
 
 ## Interface
 
-Desktop web app. Build screens from `packages/ui`, use design tokens instead of color literals, and follow `docs/interface-guidelines.md`. Components take data through props and never call the engine; only `apps/web/src/store.ts` starts work.
+A web app for desktop, tablets and phones, in either orientation. Build screens from `packages/ui`, use design tokens instead of color literals, and follow `docs/interface-guidelines.md`. Components take data through props and never call the engine; only `apps/web/src/store.ts` starts work.
 
 This project stands alone. Do not bring in another project's names, terms, class prefixes, storage keys, decision numbers or links, including in comments and documentation. `npm run audit` takes a term list from outside this repository.
 

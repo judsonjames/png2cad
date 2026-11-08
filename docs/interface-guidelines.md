@@ -7,17 +7,27 @@ These rules apply to the web app (`apps/web`) and the shared UI (`packages/ui`).
 - Show what is happening and what needs attention. A healthy result looks quiet: neutral surfaces, with saturated color only for a state that needs action.
 - Collapse what passes, never what fails. Passing checks fold into one line; warnings and faults stay visible.
 - Draw every state a screen can reach: empty, tracing, updating, failed, ready. An empty state says what belongs there and offers the next action.
-- There is no Run button. The picture updates shortly after a change, and the old picture stays on screen with "Updating…" until the new one arrives.
+- There is no Run button for quick work. The Vector picture updates shortly after a change, and the old picture stays on screen with "Updating…" until the new one arrives.
+- Work that can take minutes runs only when asked, and can be canceled. The export preview waits for Check Size: run on every change, it would fit each half-typed size on the way to the one wanted. After a change the old picture stays, with a note that it is out of date.
 - Anything that changes the art makes earlier files out of date, so they are cleared rather than left to mislead.
 - Give the screen one primary action, and keep it in view. Other actions look subordinate.
 - Use standard controls before inventing new ones. Group with spacing and alignment before adding borders or backgrounds.
 - Explanations not needed every time go in an info marker (`InfoTip`) beside the control.
 
+## Phones and tablets
+
+- **Side by side** when there is room for picture and settings: from 1000 px wide, or 700 px when the screen is wider than tall, so a phone on its side keeps a large picture.
+- **Stacked** below that: the picture on top at a fixed share of the screen, the settings under it, and the primary action pinned to the bottom.
+- **Never sideways.** The page never scrolls sideways. A bar that cannot fit becomes one row that scrolls within itself.
+- **Fields use 16 px text on touch screens.** iOS zooms in on anything smaller when it is tapped.
+- **Every gesture has a touch form.** Pinch zooms and two fingers pan the picture. Anything shown on hover also opens on a tap.
+- **Check with touch on.** Test at phone and tablet sizes in both orientations, with touch emulated, not only by narrowing a desktop window.
+
 ## Interaction and accessibility
 
 Check these on the rendered page, not only in source:
 
-- **Target size.** Pointer targets are at least 24 × 24 CSS px.
+- **Target size.** Pointer targets are at least 24 × 24 CSS px, and 44 × 44 on a touch screen. A small mark can keep its look with a larger invisible area round it.
 - **Contrast.** Text is at least 4.5:1 against the background it actually sits on; large text and control borders at least 3:1.
 - **Focus.** Every control shows a visible focus ring.
 - **Color alone.** A state shown in color also has text or a shape.

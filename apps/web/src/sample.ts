@@ -1,7 +1,9 @@
+import { drawingSurface } from "./canvas";
+
 /** A made-up two-color badge, drawn on the spot, so anyone can try the app without a file of their own. */
 export async function makeSample(): Promise<Blob> {
-  const c = new OffscreenCanvas(800, 800);
-  const g = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+  const surface = drawingSurface(800, 800);
+  const g = surface.context;
   g.fillStyle = "#ffffff";
   g.fillRect(0, 0, 800, 800);
   g.fillStyle = "#123f6d";
@@ -30,5 +32,5 @@ export async function makeSample(): Promise<Blob> {
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.fillText("P2", 400, 408);
-  return c.convertToBlob({ type: "image/png" });
+  return surface.toPng();
 }

@@ -23,7 +23,7 @@ export function ExportPanel() {
   const palette = useApp((st) => st.palette);
   const exportFiles = useApp((st) => st.exportFiles);
   const cancelExport = useApp((st) => st.cancelExport);
-  const nothing = !s.makeSvg && !s.makeDxf && !s.makePlate;
+  const make = { svg: "Make SVG", dxf: "Make DXF", "3mf": "Make 3MF" }[s.output];
   const faults = result?.findings.filter((f) => f.severity === "fault").length ?? 0;
   const warnings = result?.findings.filter((f) => f.severity === "warning").length ?? 0;
   return (
@@ -32,13 +32,12 @@ export function ExportPanel() {
         <Button
           variant="primary"
           className="app-export"
-          disabled={nothing || !s.size || palette.length < 2}
+          disabled={!s.size || palette.length < 2}
           onClick={() => void exportFiles()}
         >
-          Make Files
+          {make}
         </Button>
       )}
-      {nothing && <p className="p2c-help">Turn on at least one file above.</p>}
       {busy && step && (
         <>
           <Progress label={step.message} value={step.done} />

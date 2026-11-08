@@ -285,7 +285,8 @@ export function chainsToCurves(chains: Chain[], tolMm: number, cellMm: number): 
     s.pop();
     return s.length >= 3 ? s : source;
   };
-  const tols = chains.map(() => tolMm);
+  // Under this, the one-cell steps of a nearly straight edge on a coarse grid survive as a run of tiny jogs.
+  const tols = chains.map(() => Math.max(tolMm, 1.05 * cellMm));
   const curves: Curve[] = chains.map((c, i) => ({ points: simplifyChain(c, tols[i], c.points), closed: c.closed }));
   for (let t = 0; t < 8; t++) {
     const hits = findCrossings(curves);

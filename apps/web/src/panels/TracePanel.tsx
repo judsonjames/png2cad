@@ -29,6 +29,7 @@ export function TracePanel() {
   const lines = settings.mode === "mask";
   const crop = useApp((s) => s.crop);
   const imageWidth = useApp((s) => s.image?.width ?? 0);
+  const imageNote = useApp((s) => s.imageNote);
   const usedWidth = crop ? crop.x1 - crop.x0 : imageWidth;
   return (
     <Section
@@ -86,6 +87,7 @@ export function TracePanel() {
           />
         </>
       )}
+      {imageNote && <Banner kind="info">{imageNote}</Banner>}
       {!lines && usedWidth < 400 && (
         <Banner kind="warn" title={`Only ${usedWidth} pixels wide`}>
           Flat Colors needs about 400 pixels across, with lettering at least 20 pixels tall. Use a larger source if you
@@ -104,18 +106,20 @@ export function TracePanel() {
             onChange={(v) => v !== null && update({ speckMm: v })}
           />
         </Field>
-        <Field
-          label="Curve Tolerance"
-          info="How far an SVG curve may stray from the traced edge. A larger value gives fewer nodes and smoother curves."
-        >
-          <NumberInput
-            unit="mm"
-            value={settings.tolMm}
-            min={0.005}
-            digits={3}
-            onChange={(v) => v && update({ tolMm: v })}
-          />
-        </Field>
+        {settings.makeSvg && (
+          <Field
+            label="Curve Tolerance"
+            info="How far an SVG curve may stray from the traced edge. A larger value gives fewer nodes and smoother curves."
+          >
+            <NumberInput
+              unit="mm"
+              value={settings.tolMm}
+              min={0.005}
+              digits={3}
+              onChange={(v) => v && update({ tolMm: v })}
+            />
+          </Field>
+        )}
       </Disclosure>
       <span className="app-tip-row">
         Not what you expected?

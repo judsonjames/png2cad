@@ -6,6 +6,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { expect, test } from "@playwright/test";
+import { make } from "./helpers";
 
 const dist = join(import.meta.dirname, "..", "dist");
 const port = 5176;
@@ -52,8 +53,8 @@ test("works from a subfolder, with every file found", async ({ page }) => {
   await page.goto(`http://localhost:${port}/png2cad/`);
   await page.getByRole("button", { name: "Try a Sample" }).click();
   await expect(page.getByRole("img", { name: "The traced artwork" })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole("button", { name: "Make Files" }).click();
-  await expect(page.getByRole("button", { name: /Download All/ })).toBeVisible({ timeout: 200_000 });
+  await page.getByRole("tab", { name: "3MF", exact: true }).click();
+  await make(page, "Make 3MF");
   await page.getByRole("tab", { name: "3D Plate" }).click();
   await expect(page.getByRole("img", { name: /3D view of the plate/ })).toBeVisible({ timeout: 30_000 });
   expect(missing).toEqual([]);

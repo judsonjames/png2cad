@@ -23,7 +23,13 @@ export interface ExportRequest {
   trace: TraceRequest;
   nozzles: number[];
   fit: { featureFactor: number; gapFactor: number };
-  svg: { source: "art" | "nozzle"; backdrop?: string; tolMm: number } | null;
+  svg: {
+    source: "art" | "nozzle" | "line";
+    lineMm?: number;
+    units: DxfUnits;
+    backdrop?: string;
+    tolMm: number;
+  } | null;
   dxf: { units: DxfUnits; perColor: boolean } | null;
   plate: {
     style: PlateStyle;
@@ -35,9 +41,18 @@ export interface ExportRequest {
   } | null;
 }
 
+export interface FitRequest {
+  trace: TraceRequest;
+  /** The nozzle, or the smallest line when line is set. */
+  nozzleMm: number;
+  fit: ExportRequest["fit"];
+  line: boolean;
+}
+
 export type WorkerRequest =
   | { op: "suggest"; image: ImageData2; crop: Box | null }
-  | { op: "preview"; image: ImageData2; trace: TraceRequest; tolMm: number }
+  | { op: "preview"; image: ImageData2; trace: TraceRequest; tolMm: number; full: boolean }
+  | { op: "fit"; image: ImageData2; request: FitRequest }
   | { op: "export"; image: ImageData2; request: ExportRequest };
 
 export interface SuggestResult {
@@ -76,13 +91,18 @@ export interface PlatePart {
   triangles: Uint32Array;
 }
 
-export interface NozzleSummary {
+/** The art as the files will have it at one nozzle. */
+export interface FitPicture {
   nozzleMm: number;
   changedPct: number;
   widthMm: number;
   heightMm: number;
-  /** The fitted art, so the view can show what the nozzle does to it. */
+  /** Drawn from the same edges as the DXF and 3MF. */
   svg: string;
+  findings: Finding[];
+}
+
+export interface NozzleSummary extends FitPicture {
   parts: PlatePart[] | null;
 }
 

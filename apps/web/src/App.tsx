@@ -26,7 +26,7 @@ export function App() {
       <AppHeader subtitle="Image to DXF, SVG and 3MF">
         <span className="app-local">Runs in your browser. Your image is never uploaded.</span>
       </AppHeader>
-      <Workspace always columns="minmax(0, 1fr) 24rem">
+      <Workspace always>
         <Pane label="Picture" className="app-stage-pane">
           <Stage />
         </Pane>

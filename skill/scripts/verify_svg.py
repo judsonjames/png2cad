@@ -92,10 +92,10 @@ def read_svg(text):
         problems.append("root element is not svg")
     sizes = []
     for key in ("width", "height"):
-        m = re.fullmatch(r"([\d.]+)mm", root.get(key, ""))
+        m = re.fullmatch(r"([\d.]+)(mm|in)", root.get(key, ""))
         if not m:
-            problems.append(f"{key} is not in mm: {root.get(key)}")
-        sizes.append(float(m.group(1)) if m else 0.0)
+            problems.append(f"{key} is not in mm or in: {root.get(key)}")
+        sizes.append(float(m.group(1)) * (25.4 if m.group(2) == "in" else 1.0) if m else 0.0)
     box = [float(x) for x in root.get("viewBox", "0 0 0 0").split()]
     if box[:2] != [0, 0] or abs(box[2] - sizes[0]) > 1e-3 or abs(box[3] - sizes[1]) > 1e-3:
         problems.append(f"viewBox {box} does not match the size {sizes}")
@@ -114,6 +114,15 @@ def read_svg(text):
         if g.get("fill-rule") != "evenodd":
             problems.append(f"group {g.get('id')} is not evenodd")
         groups.append((g.get("id"), fill, [parse_path(p.get("d", "")) for p in g.findall(NS + "path")]))
+    past = 0.0
+    for _, _, paths in groups:
+        for path in paths:
+            for segs, _ in path:
+                q = flatten_subpath(segs)
+                if len(q):
+                    past = max(past, float(-q.min()), float(q[:, 0].max() - sizes[0]), float(q[:, 1].max() - sizes[1]))
+    if past > 0.005:
+        problems.append(f"art runs {past:.3f} mm past the edge of the page")
     return {"w": sizes[0], "h": sizes[1], "problems": problems, "groups": groups}
 
 

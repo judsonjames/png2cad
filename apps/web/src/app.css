@@ -11,7 +11,6 @@ body {
   font-family: var(--font);
   font-size: var(--text-md);
   line-height: var(--line);
-  min-width: 1100px;
 }
 .app {
   display: flex;
@@ -21,6 +20,9 @@ body {
 .app .p2c-workspace {
   padding: var(--space-3);
   gap: var(--space-3);
+}
+.app .p2c-workspace-always {
+  --p2c-workspace-columns: minmax(0, 1fr) 24rem;
 }
 .app-hidden {
   display: none;
@@ -70,18 +72,89 @@ body {
 }
 .app-view-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
   min-height: 2rem;
 }
 .app-view-bar .p2c-select {
   width: auto;
 }
+.app-view-bar .p2c-switch-row {
+  white-space: nowrap;
+}
 .app-view-size {
+  white-space: nowrap;
   color: var(--fg-strong);
   font-size: var(--text-sm);
 }
 .app-view-note {
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+.app-compare {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--space-2);
+}
+.app-compare-rows {
+  grid-auto-rows: minmax(0, 1fr);
+}
+.app-compare-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app-compare-tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--space-2);
+}
+.app-compare-tile button {
+  white-space: nowrap;
+}
+/* Every header the same height, so the pictures line up across the columns. */
+.app-compare-columns .app-view-bar {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  min-height: 4.5rem;
+}
+.app-compare-columns .app-view-note {
+  order: 1;
+  flex: 1 0 100%;
+}
+.app-view-progress {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  width: 20rem;
+  max-width: calc(100% - 13rem);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  color: var(--fg);
+}
+.app-fit-progress {
+  width: 20rem;
+  max-width: 100%;
+  margin: var(--space-3) auto 0;
+  color: var(--fg);
+  text-align: left;
+}
+.app-compare-progress {
+  width: 20rem;
+  max-width: calc(100% - 2 * var(--space-3));
+  color: var(--fg);
+}
+.app-compare-wait {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
   color: var(--fg-muted);
   font-size: var(--text-sm);
 }
@@ -229,7 +302,7 @@ body {
   min-height: 2rem;
 }
 .app-color input[type="color"],
-.app-suboptions input[type="color"] {
+.app-output input[type="color"] {
   width: 2rem;
   height: 1.75rem;
   padding: 0;
@@ -259,12 +332,7 @@ body {
 .app-output {
   display: grid;
   gap: var(--space-3);
-}
-.app-suboptions {
-  display: grid;
-  gap: var(--space-3);
-  padding-left: var(--space-4);
-  border-left: 2px solid var(--border);
+  padding-top: var(--space-3);
 }
 .app-template {
   display: grid;
@@ -298,4 +366,133 @@ body {
   color: var(--fg-muted);
   font-size: var(--text-sm);
   white-space: nowrap;
+}
+.app-check-row {
+  justify-content: center;
+}
+
+/* Phones and tablets.
+
+   Side by side needs room for both the picture and the settings: 1000 px, or 700 px when the screen is wider than
+   tall, so a phone turned sideways keeps the picture large. Narrower, and on a portrait phone or tablet, the picture
+   sits on top at a fixed share of the screen, the settings follow, and the page scrolls with the Make button pinned
+   to the bottom. Touch screens get 44 px targets and 16 px text in fields, since iOS zooms in on smaller text. */
+@media (max-width: 1199.98px) {
+  .app .p2c-workspace-always {
+    --p2c-workspace-columns: minmax(0, 1fr) 21rem;
+  }
+}
+@media (max-width: 899.98px) and (orientation: landscape) {
+  .app .p2c-workspace-always {
+    --p2c-workspace-columns: minmax(0, 1fr) 19rem;
+  }
+}
+/* A phone on its side is short: the picture gets the height, and its bar stays one row that scrolls sideways. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .app .p2c-app-header {
+    padding-block: var(--space-1);
+  }
+  .app-local,
+  .app .p2c-brand-subtitle {
+    display: none;
+  }
+  .app-stage .p2c-tabs {
+    margin-block: var(--space-1);
+  }
+  .app-view {
+    padding-top: 0;
+  }
+  .app-view > .app-view-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .app-view > .app-view-bar > * {
+    flex: none;
+  }
+}
+@media (max-width: 999.98px) and (orientation: portrait), (max-width: 699.98px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+  .app {
+    height: auto;
+    min-height: 100svh;
+  }
+  .app .p2c-workspace-always {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+  .app .p2c-workspace-always > .p2c-pane {
+    overflow: visible;
+  }
+  .app-stage-pane {
+    height: min(58svh, 52rem);
+    min-height: 20rem;
+  }
+  .app-stage-pane:has(.app-drop-empty) {
+    height: auto;
+  }
+  .app-settings,
+  .app-settings-scroll {
+    overflow: visible !important;
+  }
+  .app-export-panel {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    max-height: 55svh;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    box-shadow: 0 -0.5rem 1rem var(--bg);
+  }
+  .app-stage .p2c-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .app .p2c-app-header {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+@media (pointer: coarse) {
+  .app button,
+  .app select,
+  .app [role="tab"],
+  .app .p2c-toggle,
+  .app input:not([type="checkbox"], [type="radio"], [type="color"]) {
+    min-height: 44px;
+  }
+  .app button,
+  .app [role="tab"],
+  .app .p2c-toggle {
+    min-width: 44px;
+  }
+  /* Doubled, to outrank the field styles of the shared components, which load after this file. */
+  .app.app input,
+  .app.app select,
+  .app.app textarea {
+    font-size: 16px;
+  }
+  /* The marker keeps its small circle; an invisible ring around it takes the tap. */
+  .app .p2c-tip-marker::after {
+    content: "";
+    position: absolute;
+    inset: -13px;
+  }
+  .app .p2c-switch,
+  .app .p2c-checkbox {
+    min-height: 44px;
+  }
+  .app input[type="color"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+.app-viewport-box {
+  touch-action: none;
 }

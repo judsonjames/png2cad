@@ -12,7 +12,7 @@ It works best on line art and flat-color logos. Lines and gaps are fitted to you
 
 ## Using it
 
-Drop an image, set the output size, choose your files and nozzles, then select Make Files.
+Drop an image, set the output size, pick SVG, DXF or 3MF, then select Make.
 
 - **Line Art** is for one color on a plain background. **Flat Colors** is for logos. The app picks one from the image
 - **Keep Enclosed Background** keeps the white parts of a logo on white, so a plate stays in one piece

@@ -1,12 +1,23 @@
 /** All image and geometry work happens here, never on the page's thread. */
 import { suggestTrace, traceImage } from "@png2cad/core";
-import { runJob, vectorize, type JobRequest } from "@png2cad/formats";
+import {
+  fitAtSize,
+  fitFindings,
+  LINE_FIT,
+  outlineSvg,
+  runJob,
+  vectorize,
+  type JobRequest,
+  type NozzleResult,
+} from "@png2cad/formats";
 import Module, { type ManifoldToplevel } from "manifold-3d";
 import wasmUrl from "manifold-3d/manifold.wasm?url";
 import type {
   ColorStat,
   ExportRequest,
   ExportResult,
+  FitPicture,
+  FitRequest,
   ImageData2,
   PreviewResult,
   SuggestResult,
@@ -27,7 +38,12 @@ function loadKernel(): Promise<ManifoldToplevel> {
   return kernel;
 }
 
-function traceOptions(t: TraceRequest, maxCells: number) {
+/** The grid for anything that must match the files. The fit gives different results on a coarser one. */
+const FILE_CELLS = 32_000_000;
+/** The quick picture. Under a second on the truck, and fine enough to read small lettering. */
+const QUICK_CELLS = 4_000_000;
+
+function traceOptions(t: TraceRequest, maxCells: number, onProgress?: (done: number) => void) {
   return {
     mode: t.mode,
     palette: t.mode === "colors" ? t.palette : undefined,
@@ -39,12 +55,13 @@ function traceOptions(t: TraceRequest, maxCells: number) {
     keepEnclosed: t.keepEnclosed,
     crop: t.crop ?? undefined,
     maxCells,
+    onProgress,
   };
 }
 
-function preview(image: ImageData2, t: TraceRequest, tolMm: number): PreviewResult {
+function preview(image: ImageData2, t: TraceRequest, tolMm: number, full: boolean): PreviewResult {
   progress("Tracing", 0.1);
-  const map = traceImage(image, traceOptions(t, 1_500_000));
+  const map = traceImage(image, traceOptions(t, full ? FILE_CELLS : QUICK_CELLS));
   progress("Fitting curves", 0.6);
   const svg = vectorize(map, "preview", { widthMm: t.widthMm, heightMm: t.heightMm }, { source: "art", tolMm });
   const counts = new Array<number>(map.names.length).fill(0);
@@ -58,9 +75,36 @@ function preview(image: ImageData2, t: TraceRequest, tolMm: number): PreviewResu
   return { svg: svg.text, widthMm: svg.widthMm, heightMm: svg.heightMm, paths: svg.paths, nodes: svg.nodes, colors };
 }
 
+function pictureOf(n: NozzleResult, name?: string): FitPicture {
+  const outline = outlineSvg(n.map);
+  return {
+    nozzleMm: n.report.nozzleMm,
+    changedPct: n.report.changedPct,
+    widthMm: outline.widthMm,
+    heightMm: outline.heightMm,
+    svg: outline.text,
+    findings: fitFindings(n.report, name),
+  };
+}
+
+function fit(image: ImageData2, r: FitRequest): FitPicture {
+  // Tracing is about a third of the wait, whatever the size.
+  progress("Tracing", 0);
+  const map = traceImage(
+    image,
+    traceOptions(r.trace, FILE_CELLS, (done) => progress("Tracing", 0.33 * done)),
+  );
+  const box = { widthMm: r.trace.widthMm, heightMm: r.trace.heightMm };
+  const fitted = fitAtSize(map, r.nozzleMm, r.line ? LINE_FIT : r.fit, box, (message, done) =>
+    progress(message, 0.33 + 0.65 * done),
+  );
+  progress("Drawing the edges", 0.98);
+  return pictureOf(fitted, r.line ? `${r.nozzleMm} mm lines` : undefined);
+}
+
 async function runExport(image: ImageData2, r: ExportRequest): Promise<ExportResult> {
   progress("Tracing", 0.02);
-  const map = traceImage(image, traceOptions(r.trace, 32_000_000));
+  const map = traceImage(image, traceOptions(r.trace, FILE_CELLS));
   const wasm = r.plate ? await loadKernel() : null;
   const job: JobRequest = {
     title: r.title,
@@ -76,14 +120,7 @@ async function runExport(image: ImageData2, r: ExportRequest): Promise<ExportRes
   return {
     files: result.files,
     findings: result.findings,
-    nozzles: result.nozzles.map((n) => ({
-      nozzleMm: n.report.nozzleMm,
-      changedPct: n.report.changedPct,
-      widthMm: n.report.widthMm,
-      heightMm: n.report.heightMm,
-      svg: vectorize(n.map, "fitted", {}, { source: "art", tolMm: r.svg?.tolMm }).text,
-      parts: n.parts ?? null,
-    })),
+    nozzles: result.nozzles.map((n) => ({ ...pictureOf(n), parts: n.parts ?? null })),
   };
 }
 
@@ -100,9 +137,10 @@ function transferables(result: unknown): Transferable[] {
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const m = event.data;
   try {
-    let result: PreviewResult | ExportResult | SuggestResult;
+    let result: PreviewResult | ExportResult | SuggestResult | FitPicture;
     if (m.op === "suggest") result = suggestTrace(m.image, m.crop ?? undefined);
-    else if (m.op === "preview") result = preview(m.image, m.trace, m.tolMm);
+    else if (m.op === "preview") result = preview(m.image, m.trace, m.tolMm, m.full);
+    else if (m.op === "fit") result = fit(m.image, m.request);
     else result = await runExport(m.image, m.request);
     post({ type: "done", result }, transferables(result));
   } catch (error) {

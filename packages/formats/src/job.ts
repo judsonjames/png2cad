@@ -15,6 +15,7 @@ import {
   type FitReport,
   type LabelMap,
   type Point,
+  type FitProgress,
 } from "@png2cad/core";
 import { writeDxf, type DxfUnits } from "./dxf.ts";
 import { buildParts, labelLoops, partBounds, type Part, type PlateOptions } from "./mesh.ts";
@@ -34,11 +35,23 @@ export interface OutputFile {
 }
 
 export interface SvgRequest {
-  /** art comes from the unfitted map, for design programs; nozzle has the fitted line widths. */
-  source: "art" | "nozzle";
+  /**
+   * art comes from the unfitted map, for design programs; nozzle has the fitted line widths; line holds every line to
+   * lineMm, for printing that has its own smallest line.
+   */
+  source: "art" | "nozzle" | "line";
+  lineMm?: number;
+  /** The unit the file states its size in. */
+  units?: DxfUnits;
   backdrop?: string;
   tolMm?: number;
 }
+
+/**
+ * Fit for a smallest line. Gaps get half the width: a gap as wide as the line closes the spaces in small lettering, and
+ * ink or a design program does not need the room a nozzle does.
+ */
+export const LINE_FIT = { featureFactor: 1, gapFactor: 0.5 };
 
 export interface JobRequest {
   title: string;
@@ -72,6 +85,7 @@ export interface JobResult {
 
 export type Progress = (message: string, done: number) => void;
 
+const EDGE_TOL_MM = 0.0127;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -90,7 +104,7 @@ export function vectorize(
   box: { widthMm?: number; heightMm?: number },
   svg: SvgRequest | undefined,
 ) {
-  return writeSvg(svgColors(map, svg?.tolMm), { title, backdrop: svg?.backdrop, ...box });
+  return writeSvg(svgColors(map, svg?.tolMm), { title, backdrop: svg?.backdrop, units: svg?.units, ...box });
 }
 
 function extents(lists: Point[][]) {
@@ -113,9 +127,24 @@ function shifted(curves: Curve[], loX: number, loY: number): Curve[] {
   return curves.map((c) => ({ closed: c.closed, points: c.points.map(([x, y]) => [x - loX, y - loY]) }));
 }
 
-function sizeText(width: number, height: number, unit: string): string {
+function plainSize(width: number, height: number, unit: string): string {
   const digits = unit === "in" ? 2 : 1;
   return `${width.toFixed(digits)} x ${height.toFixed(digits)} ${unit}`;
+}
+
+/** A file's size in its own unit, then the other, for anyone working in either. */
+function sizeText(width: number, height: number, unit: string): string {
+  const other =
+    unit === "in"
+      ? plainSize(width * MM_PER_INCH, height * MM_PER_INCH, "mm")
+      : plainSize(width / MM_PER_INCH, height / MM_PER_INCH, "in");
+  return `${plainSize(width, height, unit)} (${other})`;
+}
+
+function svgSizeText(svg: SvgResult, units?: DxfUnits): string {
+  return units === "in"
+    ? sizeText(svg.widthMm / MM_PER_INCH, svg.heightMm / MM_PER_INCH, "in")
+    : sizeText(svg.widthMm, svg.heightMm, "mm");
 }
 
 /**
@@ -128,6 +157,39 @@ function exactSize(map: LabelMap, box: { widthMm?: number; heightMm?: number }):
   if (box.widthMm) fits.push(box.widthMm / art.width);
   if (box.heightMm) fits.push(box.heightMm / art.height);
   return fits.length ? { ...map, cellMm: map.cellMm * Math.min(...fits) } : map;
+}
+
+/** One nozzle's fit at the exact size asked for: what every fitted file, and the export preview, is made from. */
+export function fitAtSize(
+  map: LabelMap,
+  nozzleMm: number,
+  fit: JobRequest["fit"],
+  box: { widthMm?: number; heightMm?: number },
+  onProgress?: FitProgress,
+): NozzleResult {
+  const raw = fitToNozzle(map, { nozzleMm, ...fit }, box, onProgress);
+  return { report: raw.report, map: exactSize(raw.map, box) };
+}
+
+/** Fitted art as the DXF and 3MF draw it: the same simplified edges, filled, for the export preview. */
+export function outlineSvg(map: LabelMap): { text: string; widthMm: number; heightMm: number } {
+  const loops = labelLoops(boundaryChains(map), map.cellMm, EDGE_TOL_MM);
+  const art = extents([...loops.values()].flat());
+  const point = ([x, y]: Point) => `${(x - art.loX).toFixed(4)} ${(art.height - y + art.loY).toFixed(4)}`;
+  const groups = [...loops.keys()]
+    .sort((a, b) => a - b)
+    .map((label) => {
+      const d = (loops.get(label) as Point[][]).map((l) => `M${l.map(point).join("L")}Z`).join("");
+      const [r, g, b] = map.colors[label];
+      return `<path fill="rgb(${r},${g},${b})" fill-rule="evenodd" d="${d}"/>`;
+    });
+  const w = art.width.toFixed(4);
+  const h = art.height.toFixed(4);
+  return {
+    text: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}">${groups.join("")}</svg>`,
+    widthMm: art.width,
+    heightMm: art.height,
+  };
 }
 
 function nozzleTag(n: number): string {
@@ -145,22 +207,45 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
     progress?.("Fitting curves", 0);
     svg = vectorize(map, r.title, box, r.svg);
     const bytes = enc.encode(svg.text);
-    const size = sizeText(svg.widthMm, svg.heightMm, "mm");
+    const size = svgSizeText(svg, r.svg.units);
     files.push({ name: `${r.title}.svg`, kind: "svg", bytes, nozzleMm: null, sizeText: size });
     findings.push(...prefix("SVG", verifySvg(dec.decode(bytes), r.widthMm, r.heightMm)));
+  }
+  if (r.svg?.source === "line") {
+    const lineMm = r.svg.lineMm ?? 0.15;
+    const name = `${lineMm} mm lines`;
+    progress?.(`Fitting to ${name}`, 0);
+    const fitted = fitAtSize(map, lineMm, LINE_FIT, box, (message, part) =>
+      progress?.(`${message} (${name})`, (0.8 * part) / stepCount),
+    );
+    findings.push(...fitFindings(fitted.report, name));
+    svg = writeSvg(svgColors(fitted.map, r.svg.tolMm), {
+      title: `${r.title}_line${lineMm}`,
+      backdrop: r.svg.backdrop,
+      units: r.svg.units,
+    });
+    files.push({
+      name: `${r.title}_line${lineMm}.svg`,
+      kind: "svg",
+      bytes: enc.encode(svg.text),
+      nozzleMm: null,
+      sizeText: svgSizeText(svg, r.svg.units),
+    });
+    findings.push(...prefix("SVG", verifySvg(svg.text, r.widthMm, r.heightMm)));
   }
   const needsFit = r.dxf || r.plate || r.svg?.source === "nozzle";
   if (needsFit) {
     r.nozzles.forEach((n, i) => {
       progress?.(`Fitting to the ${n} mm nozzle`, (i + 1) / stepCount);
-      const raw = fitToNozzle(map, { nozzleMm: n, ...r.fit }, box);
-      const fitted = { report: raw.report, map: exactSize(raw.map, box) };
+      const fitted = fitAtSize(map, n, r.fit, box, (message, part) =>
+        progress?.(`${message} (${n} mm nozzle)`, (i + 1 + 0.8 * part) / stepCount),
+      );
       const result: NozzleResult = { report: fitted.report, map: fitted.map };
       const tag = nozzleTag(n);
-      nozzleFindings(fitted.report, fitted.map, findings);
+      findings.push(...fitFindings(fitted.report));
       const chains = boundaryChains(fitted.map);
       if (r.dxf) {
-        const all = chainsToCurves(chains, 0.0127, fitted.map.cellMm);
+        const all = chainsToCurves(chains, EDGE_TOL_MM, fitted.map.cellMm);
         const art = extents(all.map((c) => c.points));
         const curves = shifted(all, art.loX, art.loY);
         const text = writeDxf(curves, r.dxf.units);
@@ -176,7 +261,7 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
           ...prefix(`DXF ${n} mm`, verifyDxf(text, r.widthMm && r.widthMm * k, r.heightMm && r.heightMm * k)),
         );
         if (r.dxf.perColor) {
-          const loops = labelLoops(chains, fitted.map.cellMm, 0.0127);
+          const loops = labelLoops(chains, fitted.map.cellMm, EDGE_TOL_MM);
           for (const [label, list] of loops) {
             const own = list.map((points) => ({ points, closed: true }));
             const name = fitted.map.names[label];
@@ -197,13 +282,14 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
         const s = writeSvg(svgColors(fitted.map, r.svg.tolMm), {
           title: `${r.title}_${tag}`,
           backdrop: r.svg.backdrop,
+          units: r.svg.units,
         });
         files.push({
           name: `${r.title}_${tag}.svg`,
           kind: "svg",
           bytes: enc.encode(s.text),
           nozzleMm: n,
-          sizeText: sizeText(s.widthMm, s.heightMm, "mm"),
+          sizeText: svgSizeText(s, r.svg.units),
         });
         findings.push(...prefix(`SVG ${n} mm`, verifySvg(s.text, r.widthMm, r.heightMm)));
         svg ??= s;
@@ -239,7 +325,7 @@ export function runJob(map: LabelMap, r: JobRequest, wasm: ManifoldToplevel | nu
           : undefined;
         const bytes = writeThreeMf(parts, { title: `${r.title}_${tag}`, project });
         const { lo, hi } = partBounds(parts);
-        const plate = `${sizeText(hi[0] - lo[0], hi[1] - lo[1], "mm").replace(" mm", "")} x ${(hi[2] - lo[2]).toFixed(1)} mm`;
+        const plate = `${plainSize(hi[0] - lo[0], hi[1] - lo[1], "mm").replace(" mm", "")} x ${(hi[2] - lo[2]).toFixed(1)} mm`;
         files.push({ name: `${r.title}_${tag}.3mf`, kind: "3mf", bytes, nozzleMm: n, sizeText: plate });
         findings.push(...prefix(`3MF ${n} mm`, verifyThreeMf(bytes, r.plate.materials).findings));
         if (r.plate.template) {
@@ -264,30 +350,31 @@ function prefix(name: string, list: Finding[]): Finding[] {
   return list.map((f) => ({ ...f, message: `${name}: ${f.message}` }));
 }
 
-function nozzleFindings(rep: FitReport, map: LabelMap, out: Finding[]): void {
-  const n = rep.nozzleMm;
+/** What a fit left unresolved and how much it moved, in words. */
+export function fitFindings(rep: FitReport, name = `${rep.nozzleMm} mm nozzle`): Finding[] {
+  const out: Finding[] = [];
   const thin = Object.values(rep.features).reduce((s, r) => s + r.count, 0);
   if (thin || rep.gap.count) {
     out.push({
       severity: "fault",
       code: "fit.left",
-      message: `${n} mm nozzle: ${thin} thin features and ${rep.gap.count} narrow gaps are left. The detail conflicts at this size.`,
+      message: `${name}: ${thin} thin features and ${rep.gap.count} narrow gaps are left. The detail conflicts at this size.`,
     });
   } else {
-    out.push({ severity: "pass", code: "fit.left", message: `${n} mm nozzle: every line and gap is printable` });
+    out.push({ severity: "pass", code: "fit.left", message: `${name}: every line and gap is printable` });
   }
   if (rep.changedPct > 25) {
     out.push({
       severity: "warning",
       code: "fit.changed",
-      message: `${n} mm nozzle: the fit changed ${rep.changedPct}% of the art. Print larger or use a smaller nozzle.`,
+      message: `${name}: the fit changed ${rep.changedPct}% of the art. Print larger or use a smaller nozzle.`,
     });
   } else {
     out.push({
       severity: "pass",
       code: "fit.changed",
-      message: `${n} mm nozzle: ${rep.changedPct}% of the art changed`,
+      message: `${name}: ${rep.changedPct}% of the art changed`,
     });
   }
-  void map;
+  return out;
 }

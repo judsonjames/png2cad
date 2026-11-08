@@ -1,4 +1,4 @@
-import { Button, EmptyState, Select } from "@png2cad/ui/components";
+import { Button, EmptyState, Select, useMediaQuery } from "@png2cad/ui/components";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -74,10 +74,9 @@ function Scene({ parts }: { parts: PlatePart[] }) {
 export default function PlateView() {
   const result = useApp((s) => s.result);
   const busy = useApp((s) => s.exportBusy);
-  const makePlate = useApp((s) => s.settings.makePlate);
-  const update = useApp((s) => s.update);
   const exportFiles = useApp((s) => s.exportFiles);
   const plates = (result?.nozzles ?? []).filter((n) => n.parts);
+  const touch = useMediaQuery("(pointer: coarse)");
   const [picked, setPicked] = useState<number | null>(null);
   const current = plates.find((n) => n.nozzleMm === picked) ?? plates[0];
   if (!current?.parts) {
@@ -86,13 +85,7 @@ export default function PlateView() {
         title={busy ? "Building the Plate…" : "No Plate Yet"}
         action={
           busy ? undefined : (
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (!makePlate) update({ makePlate: true });
-                void exportFiles();
-              }}
-            >
+            <Button variant="primary" onClick={() => void exportFiles()}>
               Build the Plate
             </Button>
           )
@@ -107,7 +100,9 @@ export default function PlateView() {
     <>
       <div className="app-view-bar">
         <span className="app-view-size">{`${current.parts.length} parts, ${triangles.toLocaleString("en-US")} triangles`}</span>
-        <span className="app-view-note">Drag to turn. Scroll to zoom.</span>
+        <span className="app-view-note">
+          {touch ? "Drag to turn. Pinch to zoom." : "Drag to turn. Scroll to zoom."}
+        </span>
         <span className="app-spacer" />
         {plates.length > 1 && (
           <Select

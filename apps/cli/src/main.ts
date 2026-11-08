@@ -29,6 +29,8 @@ const { values, positionals } = parseArgs({
     "max-cells": { type: "string" },
     "min-cell-mm": { type: "string" },
     "keep-enclosed": { type: "boolean", default: false },
+    sharpen: { type: "string" },
+    "svg-line": { type: "string" },
     crop: { type: "string" },
   },
 });
@@ -63,6 +65,7 @@ const map = traceImage(image, {
   foreground: auto?.mode === "mask" ? auto.palette[1] : undefined,
   colorCount: values.colors ? Number(values.colors) : undefined,
   keepEnclosed: values["keep-enclosed"],
+  sharpen: values.sharpen ? Number(values.sharpen) : undefined,
   maxCells: values["max-cells"] ? Number(values["max-cells"]) : undefined,
   minCellMm: values["min-cell-mm"] ? Number(values["min-cell-mm"]) : undefined,
 });
@@ -75,7 +78,11 @@ const request: JobRequest = {
   widthMm,
   heightMm,
   nozzles: values.nozzle.split(",").map(Number),
-  svg: values.svg ? { source: "art" } : undefined,
+  svg: values["svg-line"]
+    ? { source: "line", lineMm: Number(values["svg-line"]) }
+    : values.svg
+      ? { source: "art" }
+      : undefined,
   dxf: values.dxf ? { units: values["dxf-units"] as "mm" | "in", perColor: values["per-color"] } : undefined,
   plate: values["3mf"]
     ? {
